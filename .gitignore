@@ -5,3 +5,4 @@ dist-ssr
 *.local
 /.vs
 /package-lock.json
+Thumbs.db

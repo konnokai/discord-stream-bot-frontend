@@ -43,7 +43,7 @@
         >
           <div class="w-full">
             <div
-              class="discord_banner bg-neutral-500 w-full"
+              class="discord_banner w-full"
               :class="{ got_banner: !isNoBanner(userInfo) }"
               :style="{ backgroundColor: userInfo.banner_color }"
             >
@@ -104,100 +104,134 @@ interface DiscordUser {
   username: string;
 }
 
-const toast: any = inject('toast');
+interface Toast {
+  (message: string): void;
+  error(message: string): void;
+}
 
+const toast = inject<Toast>('toast');
+if (!toast) throw new Error('缺少通知服務設定');
+
+const discordOAuthStateKey = 'discordOAuthState';
 const emit = defineEmits(['auth']);
 const userInfo = ref<DiscordUser>({} as DiscordUser);
 const isFetching = ref<boolean>(false);
 
 const isAuthed = computed<boolean>(() => !!userInfo.value.id);
-const isNoBanner = (userInfo: DiscordUser): Boolean =>
+const isNoBanner = (userInfo: DiscordUser): boolean =>
   userInfo.banner === null || userInfo.banner === 'null';
-const isShowDiscriminator = (userInfo: DiscordUser): Boolean =>
+const isShowDiscriminator = (userInfo: DiscordUser): boolean =>
   userInfo.discriminator !== '0';
 
-interface CallBackResponse {
-  code: number;
-  message: ApiResult;
-}
-
-interface ApiResult {
-  Token: string;
-  DiscordData: DiscordUser;
+interface DiscordCallbackResponse {
+  token: string;
+  discordData: DiscordUser;
 }
 
 onMounted(async () => {
   const discordData = sessionStorage.getItem('DD');
   const discordToken = sessionStorage.getItem('DT');
 
-  if (discordData) {
-    userInfo.value = JSON.parse(discordData);
+  if (discordData && discordToken) {
+    try {
+      userInfo.value = JSON.parse(discordData) as DiscordUser;
+    } catch {
+      sessionStorage.removeItem('DT');
+      sessionStorage.removeItem('DD');
+    }
+  } else if (discordData || discordToken) {
+    sessionStorage.removeItem('DT');
+    sessionStorage.removeItem('DD');
   }
   await fetchDiscordToken();
 
-  if (discordToken) {
-    emit('auth', true);
-  }
+  emit('auth', !!sessionStorage.getItem('DT') && isAuthed.value);
 });
 
-interface DiscordTokenRespnose {
+interface DiscordTokenResponse {
   discordToken?: string;
-  error?: any;
+  error?: unknown;
 }
 
-const fetchDiscordToken: AsyncFn<DiscordTokenRespnose> = async () => {
+const fetchDiscordToken: AsyncFn<DiscordTokenResponse> = async () => {
   const currentUrl = new URL(location.href);
-
-  if (currentUrl.searchParams.get('state') != 'discord')
-    return { error: 'invalid state' };
+  const returnedState = currentUrl.searchParams.get('state');
   const discordCode = currentUrl.searchParams.get('code');
+
+  if (!returnedState && !discordCode) return {};
+
+  const expectedState = sessionStorage.getItem(discordOAuthStateKey);
+  sessionStorage.removeItem(discordOAuthStateKey);
+  if (!returnedState || !expectedState || returnedState !== expectedState) {
+    currentUrl.searchParams.delete('code');
+    currentUrl.searchParams.delete('state');
+    window.history.replaceState(
+      {},
+      '',
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
+    );
+    toast.error('Discord 登入驗證失敗，請重新嘗試。');
+    return { error: 'invalid state' };
+  }
 
   isFetching.value = true;
 
   try {
-    const result = await fetch(
-      `${apiURL}/DiscordCallBack?code=${discordCode}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    if (!discordCode) throw new Error('Discord 登入回傳缺少授權碼。');
+
+    const result = await fetch(`${apiURL}/oauth/discord/callback`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ code: discordCode })
+    });
 
     if (!result.ok) throw result;
 
-    const response = (await result.json()) as CallBackResponse;
-    if (response.code != 200) throw response;
-    const discordToken = response.message.Token;
-    userInfo.value = response.message.DiscordData;
+    const response = (await result.json()) as DiscordCallbackResponse;
+    const discordToken = response.token;
+    userInfo.value = response.discordData;
 
     sessionStorage.setItem('DT', discordToken);
     sessionStorage.setItem('DD', JSON.stringify(userInfo.value)); // DiscordData
-    window.history.replaceState({}, '', location.href.split('?')[0]);
-    emit('auth', true);
-
     return { discordToken };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
-    toast.error(`${error.message}`.trim());
+    userInfo.value = {} as DiscordUser;
+    sessionStorage.removeItem('DT');
+    sessionStorage.removeItem('DD');
+    toast.error('Discord 登入失敗，請重新嘗試。');
     return { error };
   } finally {
+    currentUrl.searchParams.delete('code');
+    currentUrl.searchParams.delete('state');
+    window.history.replaceState(
+      {},
+      '',
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
+    );
     isFetching.value = false;
   }
 };
 
 const openDiscord = () => {
   if (isAuthed.value) return;
-  const redirect_uri = `${location.origin}/stream/login`;
+  const stateBytes = crypto.getRandomValues(new Uint8Array(32));
+  const state = Array.from(stateBytes, (value) =>
+    value.toString(16).padStart(2, '0')
+  ).join('');
+  sessionStorage.setItem(discordOAuthStateKey, state);
 
-  location.href = `
-    https://discord.com/api/oauth2/authorize?
-    client_id=${discordClientId}&redirect_uri=${redirect_uri}&
-    response_type=code&
-    scope=identify&
-    state=discord
-  `.replace(/\n| /g, '');
+  const params = new URLSearchParams({
+    client_id: String(discordClientId),
+    redirect_uri: `${location.origin}/`,
+    response_type: 'code',
+    scope: 'identify',
+    state
+  });
+  location.href = `https://discord.com/api/oauth2/authorize?${params}`;
 };
 </script>
 

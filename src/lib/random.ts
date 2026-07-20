@@ -18,7 +18,7 @@ export const randomDate = () => {
   return `2021-${add0(month)}-${add0(day)} ${add0(hour)}:${add0(min)}`;
 };
 
-export const getRandomFrom = (arr: Array<any>): any => {
+export const getRandomFrom = <T>(arr: readonly T[]): T => {
   return (() => arr[Math.floor(Math.random() * arr.length)])();
 };
 

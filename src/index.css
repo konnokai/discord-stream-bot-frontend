@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
 html {
   @apply bg-neutral-800;
@@ -48,10 +46,11 @@ html {
   @apply shadow;
   @apply flex;
   @apply overflow-hidden;
-  &-outline {
-    @apply outline;
-    @apply shadow-none;
-  }
+}
+
+.card-outline {
+  @apply outline;
+  @apply shadow-none;
 }
 
 .info_card {

@@ -8,7 +8,7 @@
           ©
           <a
             class="mx-1 underline text-indigo-300"
-            href="https://github.com/jun112561"
+            href="https://github.com/konnokai"
             target="_blank"
           >
             孤之界
@@ -40,7 +40,7 @@
     <div class="right-side">
       <div>
         <a
-          href="https://github.com/jun112561/Discord-Stream-Notify-Bot"
+          href="https://github.com/konnokai/DiscordStreamNotifyBot"
           target="_blank"
           class="text-sm text-indigo-300 underline mr-3"
         >
@@ -58,11 +58,19 @@
           </svg>
           原始碼
         </a>
-        <a href="/stream/privacy" class="text-sm text-indigo-300 underline">
+        <a
+          href="/privacy"
+          data-spa-link
+          class="text-sm text-indigo-300 underline"
+        >
           隱私權政策
         </a>
         <span class="mx-1"></span>
-        <a href="/stream/terms" class="text-sm text-indigo-300 underline">
+        <a
+          href="/terms"
+          data-spa-link
+          class="text-sm text-indigo-300 underline"
+        >
           使用條款
         </a>
       </div>

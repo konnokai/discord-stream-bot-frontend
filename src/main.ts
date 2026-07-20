@@ -1,23 +1,15 @@
 import { createApp } from 'vue';
 import App from './App.vue';
-import './index.scss';
+import './index.css';
 
-if (['/privacy', '/terms'].includes(location.pathname)) {
-  //
-} else {
-  const app = createApp(App);
+const app = createApp(App);
 
-  app.provide(
-    'googleClientId',
-    '1001497098111-tbs3uidhom0r2p6gjaa8kqed4qp3oc61.apps.googleusercontent.com'
-  );
-  app.provide('discordClientId', '758222559392432160');
-  app.provide(
-    'apiURL',
-    import.meta.env.DEV
-      ? 'https://dev-api.konnokai.me'
-      : 'https://api.konnokai.me'
-  );
+app.provide('discordClientId', '758222559392432160');
+app.provide(
+  'apiURL',
+  import.meta.env.DEV
+    ? 'https://dev-api.konnokai.me'
+    : 'https://api.konnokai.me'
+);
 
-  app.mount('#app');
-}
+app.mount('#app');

@@ -34,7 +34,7 @@ const props = defineProps({
 const emit = defineEmits(['load']);
 
 const loadComplete = ref<boolean>(false);
-const res = ref<any>(null);
+const res = ref<unknown>(null);
 const isLoading = computed<boolean>(() => props.loading || !loadComplete.value);
 const shoudShowContent = computed<boolean>(
   () => !isLoading.value || props.remainContent
