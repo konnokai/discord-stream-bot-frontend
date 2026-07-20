@@ -18,9 +18,8 @@
     </div>
 
     <p class="text-sm leading-6 text-zinc-300 mb-4">
-      僅用於設定您自己的 Twitch
-      直播爬蟲，不會用於其他用途。完成授權後即使伺服器未滿 200
-      人，也可以新增您自己的 Twitch 頻道爬蟲。
+      僅用於設定您自己的 Twitch 直播爬蟲，不會用於其他用途。
+      完成授權後即使伺服器未滿 200 人，也可以新增您自己的 Twitch 頻道爬蟲。
     </p>
     <p class="text-sm leading-6 text-zinc-300 mb-5">
       若授權失效，系統會重新檢查設定該爬蟲的伺服器人數；未滿 200
