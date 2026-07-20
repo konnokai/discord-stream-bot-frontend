@@ -42,7 +42,7 @@ pnpm lint:script
 pnpm lint:style
 ```
 
-Vite 只會輸出單一 SPA entry 至 `dist/`。`public/_redirects` 會一併輸出，讓 Cloudflare Pages 將 `/privacy`、`/terms` 與未知路徑交回 `index.html`，再由前端決定顯示內容。
+Vite 只會輸出單一 SPA entry 至 `dist/`。`wrangler.jsonc` 的 `assets.not_found_handling` 設為 `single-page-application`，讓 Cloudflare 將 `/privacy`、`/terms` 與未知路徑交回 `index.html`，再由前端決定顯示內容；不使用 `public/_redirects`，以免 Wrangler 判定 fallback 規則形成無限迴圈。
 
 ## 部署
 
