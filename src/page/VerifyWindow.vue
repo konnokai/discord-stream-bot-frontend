@@ -5,28 +5,28 @@
       Member Link
     </p>
     <div class="h-3"></div>
-    <p>這是一個可自動驗證會員的應用程式</p>
+    <p>Member Link 可以自動驗證會員資格</p>
     <p>
       請先完成
       <strong class="text-indigo-400">Discord</strong>
-      登入，再依照需要選擇連結
-      <strong class="text-red-400">YouTube (Google 帳戶)</strong>
+      登入，再視需要連結
+      <strong class="text-red-400">YouTube（Google 帳戶）</strong>
       或
       <strong class="text-purple-300">Twitch</strong>
     </p>
-    <p>兩個平台皆為選用，也可以同時連結</p>
+    <p>Google 與 Twitch 都是選用，也可以同時連結</p>
     <p>
-      若您的伺服器未提供說明，可
+      如果伺服器內沒有操作說明，可以參考
       <a
         href="https://konnokai.notion.site/e69c579dc0ae4ff69866946d7dc36b8f"
         class="text-sm text-indigo-300 underline"
         target="_blank"
         rel="noopener noreferrer"
       >
-        參考此頁面
+        帳號連結教學
       </a>
     </p>
-    <p class="mt-2">Discord 登入後會顯示您目前的平台連結狀態</p>
+    <p class="mt-2">登入 Discord 後，這裡會顯示您目前連結的平台</p>
   </div>
 
   <div class="h-6"></div>
@@ -53,8 +53,8 @@
         class="mx-2 mb-3 rounded bg-amber-900 p-4 text-sm text-amber-100"
       >
         <p>
-          無法取得最新的平台連結資訊。您仍可嘗試連結 Google 或
-          Twitch，也可以重新向後端取得目前狀態。
+          目前無法取得最新的帳號連結狀態。您可以繼續嘗試連結 Google 或
+          Twitch，或重新載入連結資訊。
         </p>
         <div class="mt-3 flex justify-center">
           <button
@@ -62,9 +62,7 @@
             :disabled="isAccountLinksFetching || isProviderPending"
             @click="retryAccountLinks"
           >
-            {{
-              isAccountLinksFetching ? '正在重新取得...' : '重新取得連結資訊'
-            }}
+            {{ isAccountLinksFetching ? '重新取得中…' : '重新取得連結資訊' }}
           </button>
         </div>
       </div>
@@ -170,18 +168,18 @@ provide('toast', toast);
 
 const callbackReasonMessages: Record<string, string> = {
   authorization_denied: '您已取消授權。',
-  invalid_state: '授權驗證失敗，請重新開始授權。',
-  state_expired: '授權流程已逾時，請重新開始授權。',
-  state_not_found: '找不到授權流程，請重新開始授權。',
-  token_exchange_failed: '無法完成授權交換，請稍後重試。',
+  invalid_state: '授權驗證失敗，請重新授權。',
+  state_expired: '授權流程已逾時，請重新授權。',
+  state_not_found: '找不到授權流程，請重新授權。',
+  token_exchange_failed: '無法完成授權，請稍後再試。',
   profile_fetch_failed: '無法取得帳號資料，請稍後重試。',
   invalid_client: '授權應用程式驗證失敗，請聯絡管理員。',
-  invalid_scope: '授權範圍不正確，請重新開始授權。',
+  invalid_scope: '授權範圍不正確，請重新授權。',
   account_conflict: '此帳號已連結至其他使用者。',
-  save_failed: '無法保存連結資料，請稍後重試。',
+  save_failed: '無法儲存連結資料，請稍後再試。',
   provider_unavailable: '授權服務暫時無法使用，請稍後重試。',
-  provider_validation_failed: '無法驗證授權帳號，請重新開始授權。',
-  missing_code: '授權服務未回傳授權碼，請重新開始授權。',
+  provider_validation_failed: '無法驗證授權帳號，請重新授權。',
+  missing_code: '授權服務未回傳授權碼，請重新授權。',
   server_error: '伺服器處理授權時發生錯誤，請稍後重試。'
 };
 
@@ -357,7 +355,7 @@ const handleOAuthCallback = (statusLoaded: boolean): boolean => {
     if (!isLinked) {
       if (callback.provider === 'google') googleStatusOverride.value = 'error';
       else twitchStatusOverride.value = 'error';
-      toast.error('授權狀態未同步或連結失敗，請重新嘗試。');
+      toast.error('帳號尚未連結成功，請再試一次。');
     } else
       toast(
         callback.provider === 'google'
@@ -454,7 +452,7 @@ const unlinkProvider = async (provider: Provider) => {
 
     toast.error(
       provider === 'google'
-        ? '無法解除 Google 綁定，請稍後重試。'
+        ? '無法解除 Google 連結，請稍後重試。'
         : '無法解除 Twitch 連結，請稍後重試。'
     );
     unlinkingProvider.value = null;
@@ -472,7 +470,9 @@ const unlinkProvider = async (provider: Provider) => {
       ...accountLinks.value,
       twitch: { ...accountLinks.value.twitch, status: 'revoked' }
     };
-    toast('Twitch 已解除連結，後續將依直播與伺服器狀態安全清理。');
+    toast(
+      'Twitch 已解除連結。若伺服器未滿 200 人，系統會依目前的直播狀態移除爬蟲。'
+    );
   }
 
   unlinkingProvider.value = null;

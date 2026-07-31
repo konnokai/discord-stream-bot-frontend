@@ -15,7 +15,7 @@
           }"
           @click="openDiscord"
         >
-          {{ isAuthed ? '已驗證' : '開始驗證' }} discord
+          {{ isAuthed ? 'Discord 已驗證' : '登入 Discord' }}
         </button>
 
         <svg

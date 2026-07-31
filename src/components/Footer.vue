@@ -25,7 +25,7 @@
       </div>
       <div>
         <span class="text-xs text-gray-400">
-          部分素材使用
+          部分素材取自
           <a
             href="https://www.irasutoya.com/"
             class="text-indigo-300 underline"

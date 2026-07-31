@@ -16,7 +16,7 @@
     </div>
 
     <p class="text-sm leading-6 text-zinc-300 mb-5">
-      授權僅用於透過此帳號讀取會限影片留言，來判定是否持有該頻道的會員資格，不會修改您的影片、評價、留言或字幕，也不會用於會員認證以外的用途。
+      授權只用來讀取此帳號在會員限定影片中的留言，以確認您是否具有該頻道的會員資格。系統不會修改您的影片、評價、留言或字幕，也不會將授權用於其他用途。
     </p>
 
     <div
@@ -58,7 +58,7 @@
         :disabled="isPending"
         @click="emit('unlink')"
       >
-        {{ isUnlinking ? '正在解除...' : '解除 Google 綁定' }}
+        {{ isUnlinking ? '解除中…' : '解除 Google 連結' }}
       </button>
     </div>
   </section>
@@ -99,7 +99,7 @@ const statusClass = computed(() => ({
 }));
 
 const startButtonText = computed(() => {
-  if (props.isStarting || props.status === 'authorizing') return '正在授權...';
+  if (props.isStarting || props.status === 'authorizing') return '授權中…';
   if (props.status === 'invalid' || props.status === 'error')
     return '重新授權 Google';
 

@@ -3,8 +3,8 @@
   <div class="container mx-auto p-4">
     <div class="flex-wrap justify-space-between items-center sm:flex">
       <div class="flex-1 flex justify-center my-3">
-        《直播小幫手》是一隻提供 Vtuber
-        直播通知、待機室建立、影片上傳、會限認證等服務的 Discord 機器人
+        《直播小幫手》是專為 VTuber 設計的 Discord
+        機器人，提供直播通知、建立待機室、影片上傳及會員限定內容認證等功能。
       </div>
     </div>
     <div class="h-7"></div>
@@ -26,13 +26,11 @@
       </div>
       <div class="w-8"></div>
       <div class="flex-1 my-3">
-        簡單快速的會員審核，伺服器成員不再需要提供會員證明截圖、也不需在直播聊天室打字認證了！
-        只要先連接
+        伺服器成員不必再提供會員截圖，也不用到直播聊天室留言認證。連結
         <span class="text-indigo-400">Discord</span>
-        帳號，再依照需要選擇連接
+        與需要使用的
         <span class="text-red-400">Google</span>
-        帳號，並進到伺服器中打上相關指令
-        (詳見教學頁面)，便能瀏覽伺服器的會員限定頻道
+        帳號後，在伺服器輸入指定指令，就能存取會員限定頻道。操作方式請參考上方教學頁面。
       </div>
     </div>
     <div class="h-7"></div>
@@ -42,12 +40,10 @@
       </div>
       <div class="w-8"></div>
       <div class="flex-1 my-3">
-        除了
-        <span class="text-red-400">Google</span>
-        相關的服務以外，《直播小幫手》還支援
+        《直播小幫手》也支援
         <span class="text-purple-300">Twitch</span>
-        通知，若你的伺服器還未擁有 200
-        名成員，也可透過預先登入授權方式使用通知功能
+        直播通知。伺服器未滿 200
+        人時，只要先登入並完成授權，一樣可以使用通知功能。
       </div>
     </div>
   </div>

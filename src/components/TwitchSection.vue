@@ -18,14 +18,14 @@
     </div>
 
     <p class="text-sm leading-6 text-zinc-300 mb-4">
-      僅用於設定您自己的 Twitch
-      直播爬蟲，不會用於其他用途。完成授權後即使伺服器未滿 200
-      人，也可以新增您自己的 Twitch 頻道爬蟲。
+      這項授權只用來設定您的 Twitch
+      直播爬蟲，不會用於其他用途。完成授權後，即使伺服器未滿 200
+      人，也能新增自己的 Twitch 頻道爬蟲。
     </p>
     <p class="text-sm leading-6 text-zinc-300 mb-5">
-      若授權失效，系統會重新檢查設定該爬蟲的伺服器人數；未滿 200
-      人時將自動移除爬蟲，Twitch
-      通知會停止，但既有通知設定會保留為暫時不生效的設定。若頻道當下正在直播，系統會等待該場直播結束後才移除，避免遺失直播更新及關台通知。
+      授權失效後，系統會重新檢查使用該爬蟲的伺服器人數。若伺服器未滿 200
+      人，爬蟲將自動移除並停止發送 Twitch
+      通知；原有的通知設定會保留，但暫時不會生效。如果頻道正在直播，系統會等到直播結束後再移除，避免漏掉直播更新及關台通知。
     </p>
 
     <div
@@ -51,10 +51,11 @@
     </div>
 
     <p v-if="status === 'invalid'" class="text-sm text-amber-300 mb-4">
-      Twitch 授權已失效；直播爬蟲將依伺服器人數與直播狀態進行安全清理。
+      Twitch 授權已失效。若伺服器未滿 200
+      人，系統會移除直播爬蟲；如果頻道正在直播，會等到直播結束後再移除。
     </p>
     <p v-else-if="status === 'revoked'" class="text-sm text-amber-300 mb-4">
-      Twitch 授權已撤銷。您可以重新連結以恢復選用功能。
+      Twitch 授權已撤銷。若要繼續使用直播爬蟲，請重新連結 Twitch。
     </p>
     <p v-else-if="status === 'error'" class="text-sm text-red-300 mb-4">
       無法完成 Twitch 授權或取得最新狀態，請稍後重試。
@@ -85,8 +86,8 @@
     >
       <p class="font-bold text-amber-300 mb-2">解除前請確認</p>
       <p>
-        解除後，未滿 200 人伺服器所設定的 Twitch
-        爬蟲可能被自動移除；若頻道正在直播，會延後到該場直播結束後才清理，以保留直播更新與關台通知。爬蟲移除後，通知設定仍會保留，但會暫時停止生效。
+        解除連結後，未滿 200 人的伺服器可能會自動移除 Twitch
+        爬蟲。如果頻道正在直播，系統會等到直播結束後再移除，以免漏掉直播更新與關台通知。原有的通知設定仍會保留，但暫時不會生效。
       </p>
       <div class="flex flex-wrap justify-end gap-3 mt-4">
         <button
@@ -101,7 +102,7 @@
           :disabled="isPending"
           @click="confirmUnlink"
         >
-          {{ isUnlinking ? '正在解除...' : '確認解除' }}
+          {{ isUnlinking ? '解除中…' : '確認解除' }}
         </button>
       </div>
     </div>
@@ -147,7 +148,7 @@ const statusClass = computed(() => ({
 }));
 
 const startButtonText = computed(() => {
-  if (props.isStarting || props.status === 'authorizing') return '正在授權...';
+  if (props.isStarting || props.status === 'authorizing') return '授權中…';
   if (
     props.status === 'invalid' ||
     props.status === 'revoked' ||
