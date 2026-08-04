@@ -19,7 +19,7 @@
     </a>
 
     <h1 class="mt-4 text-4xl sm:text-5xl">隱私權政策</h1>
-    <p class="mt-2 text-sm text-zinc-400">最後更新：2026 年 7 月 20 日</p>
+    <p class="mt-2 text-sm text-zinc-400">最後更新：2026 年 8 月 3 日</p>
 
     <section class="mt-8">
       <h2 class="mb-2 text-2xl text-white">一、適用範圍</h2>
@@ -41,8 +41,9 @@
       </p>
       <p>
         Twitch：此功能可自行選用。系統會儲存 Twitch 使用者
-        ID、登入名稱、顯示名稱、頭像，以及設定直播爬蟲所需的授權憑證（token）。帳號資料（profile）只用來顯示已連結的帳號；授權憑證只用來驗證頻道主（broadcaster）授權、維持直播爬蟲與
-        EventSub，不會用於其他用途，也不會讀取不必要的 Twitch 資料。
+        ID、登入名稱、顯示名稱、頭像、加密的授權憑證（token）、授權範圍（scope）、訂閱驗證結果與最後檢查時間。帳號資料（profile）只用來顯示已連結的帳號；授權憑證只用來驗證頻道主（broadcaster）授權、維持直播爬蟲與
+        EventSub，以及在管理員指定驗證頻道後呼叫 Twitch API 檢查目前訂閱資格與
+        Tier，不會用於其他用途，也不會讀取不必要的 Twitch 資料。
       </p>
     </section>
 
@@ -58,13 +59,14 @@
     </section>
 
     <section class="mt-8">
-      <h2 class="mb-2 text-2xl text-white">四、撤銷、失效與爬蟲清理</h2>
+      <h2 class="mb-2 text-2xl text-white">四、撤銷、失效、驗證與爬蟲清理</h2>
       <p class="mb-3">
         您可以隨時在帳號連結頁解除 Google 或 Twitch。解除 Twitch
-        連結時，系統會撤銷授權；若授權失效或遭撤銷，系統也會停止使用該授權憑證。
+        連結時，系統會撤銷授權。授權失效或遭撤銷時，訂閱驗證會停止，系統可能清理由驗證授予的身分組，並停止使用該授權憑證。
       </p>
       <p>
-        Twitch 授權失效後，系統會重新檢查使用爬蟲的 Discord 伺服器人數。未滿 200
+        此外，Twitch 授權失效後，系統會重新檢查使用爬蟲的 Discord
+        伺服器人數。未滿 200
         人時，系統可能自動移除爬蟲；如果頻道正在直播，會等到直播結束後再移除，避免漏掉直播更新及關台通知。原有的
         Twitch 通知設定不會刪除，但會暫時停止生效。
       </p>
@@ -111,7 +113,7 @@
         除非是提供本服務、依法配合或保護系統安全所必須的情況，本站不會出售、出租或交換您的個人資料。前往
         Discord、Google、Twitch
         或其他外部網站時，請另行參閱該網站的隱私權政策。為了完成登入、會員驗證、Twitch
-        直播爬蟲及流量分析，必要資料會分別傳送至
+        直播爬蟲、Twitch 訂閱驗證及流量分析，必要資料會分別傳送至
         Discord、Google／YouTube、Twitch 與 Google
         Analytics，並由各服務依其隱私權政策處理。
       </p>

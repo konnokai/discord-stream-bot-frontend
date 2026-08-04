@@ -36,14 +36,15 @@
     <div class="h-7"></div>
     <div class="flex-wrap justify-space-between items-center sm:flex">
       <div class="flex-1 my-3">
-        <img src="/video_dance_odottemita.png" alt="" />
+        <img src="/internet_nidankai_ninsyou_man.png" alt="" />
       </div>
       <div class="w-8"></div>
       <div class="flex-1 my-3">
         《直播小幫手》也支援
         <span class="text-purple-300">Twitch</span>
-        直播通知。伺服器未滿 200
-        人時，只要先登入並完成授權，一樣可以使用通知功能。
+        直播通知與訂閱驗證。於本網站連結 Discord 與 Twitch 後，即可使用 Twitch
+        訂閱驗證功能 (需要伺服器管理員設定使用)。 伺服器未滿 200 人時，完成
+        Twitch 授權也能使用自己的 Twitch 頻道直播通知。
       </div>
     </div>
   </div>

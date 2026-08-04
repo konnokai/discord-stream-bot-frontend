@@ -1,6 +1,6 @@
 # 直播小幫手帳號連結前端
 
-Vue 3、TypeScript 與 Vite 建置的《直播小幫手》帳號連結 SPA，部署於 Cloudflare Pages 的 `https://stream-bot.konnokai.me/`。根頁面同時提供服務介紹與帳號連結介面；Discord 登入後可選擇連結 Google 以使用 YouTube 會員驗證，或連結 Twitch 以設定自己的直播爬蟲，也可以同時連結兩個平台。
+Vue 3、TypeScript 與 Vite 建置的《直播小幫手》帳號連結 SPA，部署於 Cloudflare Pages 的 `https://stream-bot.konnokai.me/`。根頁面同時提供服務介紹與帳號連結介面；Discord 登入後可選擇連結 Google 以使用 YouTube 會員驗證，或連結 Twitch 以使用訂閱驗證及設定自己的直播爬蟲，也可以同時連結兩個平台。
 
 ## OAuth 流程
 
@@ -16,7 +16,13 @@ Discord 為必要登入。Google 與 Twitch 都是互不依賴的選用功能，
 
 ## Twitch 選用功能
 
-Twitch 授權僅用於設定使用者自己的 Twitch 直播爬蟲。有效授權可讓未滿 200 人的伺服器新增授權者自己的頻道爬蟲。授權失效或解除後，系統會依伺服器人數決定是否移除爬蟲；直播中會延後至關台後清理。爬蟲被移除時，既有通知設定會保留，但暫時不生效。
+Twitch 訂閱驗證流程如下：
+
+1. 成員先在本網站連結 Discord 與 Twitch 帳號。
+2. 伺服器管理員在 Discord 設定要驗證的 Twitch 頻道及共用訂閱身分組。
+3. 一般成員不需設定頻道或身分組，回到 Discord 執行 `/twitch-member check` 即可驗證訂閱資格與 Tier。
+
+Bot 會透過 Twitch API 查詢使用者目前是否訂閱管理員設定的頻道及訂閱 Tier，並授予共用及對應 Tier 的訂閱身分組。Twitch 授權也可用於設定使用者自己的直播爬蟲；有效授權可讓未滿 200 人的伺服器新增授權者自己的頻道爬蟲。授權失效或解除後，訂閱驗證會停止，驗證授予的身分組可能遭清理；系統也會依伺服器人數決定是否移除爬蟲，直播中會延後至關台後清理。爬蟲被移除時，既有通知設定會保留，但暫時不生效。
 
 ## 開發
 

@@ -10,7 +10,7 @@
       請先完成
       <strong class="text-indigo-400">Discord</strong>
       登入，再視需要連結
-      <strong class="text-red-400">YouTube（Google 帳戶）</strong>
+      <strong class="text-red-400">YouTube (Google 帳戶)</strong>
       或
       <strong class="text-purple-300">Twitch</strong>
     </p>
@@ -176,6 +176,7 @@ const callbackReasonMessages: Record<string, string> = {
   invalid_client: '授權應用程式驗證失敗，請聯絡管理員。',
   invalid_scope: '授權範圍不正確，請重新授權。',
   account_conflict: '此帳號已連結至其他使用者。',
+  authorization_busy: '目前有另一個 Twitch 授權操作正在處理，請稍後再試。',
   save_failed: '無法儲存連結資料，請稍後再試。',
   provider_unavailable: '授權服務暫時無法使用，請稍後重試。',
   provider_validation_failed: '無法驗證授權帳號，請重新授權。',
@@ -360,7 +361,7 @@ const handleOAuthCallback = (statusLoaded: boolean): boolean => {
       toast(
         callback.provider === 'google'
           ? 'Google 已成功連結，可使用 YouTube 會員驗證功能。'
-          : 'Twitch 已成功連結，可使用自己的 Twitch 直播爬蟲功能。'
+          : 'Twitch 已成功連結。可使用 Twitch 訂閱驗證功能。'
       );
   } else {
     if (
@@ -471,7 +472,7 @@ const unlinkProvider = async (provider: Provider) => {
       twitch: { ...accountLinks.value.twitch, status: 'revoked' }
     };
     toast(
-      'Twitch 已解除連結。若伺服器未滿 200 人，系統會依目前的直播狀態移除爬蟲。'
+      'Twitch 已解除連結，訂閱驗證會被停止並移除已授予的身分組；若有使用 Twitch 爬蟲而伺服器人數低於 200 人，則會一併移除 Twitch 爬蟲。'
     );
   }
 

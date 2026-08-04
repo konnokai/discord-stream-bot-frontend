@@ -3,13 +3,13 @@
     <div class="flex items-center justify-between mb-4">
       <div>
         <div class="flex items-center gap-2">
-          <p class="text-xl font-bold text-white">Twitch 直播爬蟲</p>
+          <p class="text-xl font-bold text-white">Twitch 直播爬蟲與訂閱驗證</p>
           <span class="rounded bg-purple-700 px-2 py-1 text-xs text-white">
             選用
           </span>
         </div>
         <p class="text-sm text-purple-300">
-          連結後可設定自己的 Twitch 直播爬蟲
+          連結後可使用訂閱驗證，並設定自己的 Twitch 直播爬蟲
         </p>
       </div>
       <span class="text-sm font-bold" :class="statusClass">
@@ -18,14 +18,18 @@
     </div>
 
     <p class="text-sm leading-6 text-zinc-300 mb-4">
-      這項授權只用來設定您的 Twitch
-      直播爬蟲，不會用於其他用途。完成授權後，即使伺服器未滿 200
-      人，也能新增自己的 Twitch 頻道爬蟲。
+      完成 Discord 與 Twitch 帳號連結後，伺服器管理員會在 Discord
+      設定驗證頻道與共用訂閱身分組；一般成員不需進行設定。
+    </p>
+    <p class="text-sm leading-6 text-zinc-300 mb-4">
+      管理員完成設定後，一般成員請回到 Discord 執行
+      <code>/twitch-member check</code>
+      。Bot 會查詢您目前是否訂閱該頻道及訂閱 Tier，並授予共用與對應 Tier
+      的訂閱身分組。
     </p>
     <p class="text-sm leading-6 text-zinc-300 mb-5">
-      授權失效後，系統會重新檢查使用該爬蟲的伺服器人數。若伺服器未滿 200
-      人，爬蟲將自動移除並停止發送 Twitch
-      通知；原有的通知設定會保留，但暫時不會生效。如果頻道正在直播，系統會等到直播結束後再移除，避免漏掉直播更新及關台通知。
+      此授權也可用來設定您的 Twitch 直播爬蟲。完成授權後，即使伺服器未滿 200
+      人，也能新增自己的 Twitch 頻道爬蟲。
     </p>
 
     <div
@@ -51,11 +55,15 @@
     </div>
 
     <p v-if="status === 'invalid'" class="text-sm text-amber-300 mb-4">
-      Twitch 授權已失效。若伺服器未滿 200
-      人，系統會移除直播爬蟲；如果頻道正在直播，會等到直播結束後再移除。
+      Twitch
+      授權已失效，訂閱驗證會停止，且由驗證授予的身分組可能會遭清理。若伺服器未滿
+      200 人，系統也可能移除直播爬蟲；如果頻道正在直播，會等到直播結束後再移除。
     </p>
     <p v-else-if="status === 'revoked'" class="text-sm text-amber-300 mb-4">
-      Twitch 授權已撤銷。若要繼續使用直播爬蟲，請重新連結 Twitch。
+      Twitch
+      授權已撤銷，訂閱驗證會停止，且由驗證授予的身分組可能會遭清理。若要繼續使用訂閱驗證或直播爬蟲，請重新連結
+      Twitch；未滿 200
+      人的伺服器也可能移除直播爬蟲，直播中則會延後至關台後處理。
     </p>
     <p v-else-if="status === 'error'" class="text-sm text-red-300 mb-4">
       無法完成 Twitch 授權或取得最新狀態，請稍後重試。
@@ -86,7 +94,8 @@
     >
       <p class="font-bold text-amber-300 mb-2">解除前請確認</p>
       <p>
-        解除連結後，未滿 200 人的伺服器可能會自動移除 Twitch
+        解除連結後，訂閱驗證會停止，系統可能清理由驗證授予的身分組；未滿 200
+        人的伺服器也可能自動移除 Twitch
         爬蟲。如果頻道正在直播，系統會等到直播結束後再移除，以免漏掉直播更新與關台通知。原有的通知設定仍會保留，但暫時不會生效。
       </p>
       <div class="flex flex-wrap justify-end gap-3 mt-4">
