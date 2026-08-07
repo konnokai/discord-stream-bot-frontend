@@ -19,7 +19,7 @@
     </a>
 
     <h1 class="mt-4 text-4xl sm:text-5xl">隱私權政策</h1>
-    <p class="mt-2 text-sm text-zinc-400">最後更新：2026 年 8 月 3 日</p>
+    <p class="mt-2 text-sm text-zinc-400">最後更新：2026 年 8 月 5 日</p>
 
     <section class="mt-8">
       <h2 class="mb-2 text-2xl text-white">一、適用範圍</h2>
@@ -36,8 +36,10 @@
         與 Twitch 帳號連結使用。
       </p>
       <p class="mb-3">
-        Google：系統會儲存會員驗證所需的授權資料，以及顯示連結狀態所需的帳號名稱與頭像。授權只用來讀取
-        YouTube 會員資格與驗證紀錄，不會修改您的影片、評價、留言或字幕。
+        Google：系統會儲存會員驗證所需的授權資料、YouTube 頻道資料（頻道
+        ID、名稱與頭像）、會員資格檢查結果與最後檢查時間。帳號名稱與頭像會以
+        YouTube 頻道呈現。授權只用來讀取 YouTube
+        頻道資料與會員限定影片中的留言，不會修改您的影片、評價、留言或字幕。
       </p>
       <p>
         Twitch：此功能可自行選用。系統會儲存 Twitch 使用者
@@ -63,6 +65,11 @@
       <p class="mb-3">
         您可以隨時在帳號連結頁解除 Google 或 Twitch。解除 Twitch
         連結時，系統會撤銷授權。授權失效或遭撤銷時，訂閱驗證會停止，系統可能清理由驗證授予的身分組，並停止使用該授權憑證。
+      </p>
+      <p class="mb-3">
+        解除 Google 連結或 Google 授權失效後，YouTube
+        會員驗證會停止。若有待清理的 Discord
+        身分組，系統會保留完成清理所需的狀態，直到清理完成為止。
       </p>
       <p>
         此外，Twitch 授權失效後，系統會重新檢查使用爬蟲的 Discord

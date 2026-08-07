@@ -74,8 +74,10 @@
             :is-starting="startingProvider === 'google'"
             :is-unlinking="unlinkingProvider === 'google'"
             :is-pending="isProviderPending || isAccountLinksFetching"
+            :operation-status="googleOperationStatus"
             @start="startProvider('google')"
             @unlink="unlinkProvider('google')"
+            @refresh="refreshGoogleStatus"
           />
         </div>
         <div class="w-full lg:w-1/2 p-2">
@@ -120,6 +122,7 @@ import {
 } from '../lib/accountLinks';
 import type {
   AccountLinks,
+  GoogleUnlinkResponse,
   GoogleViewStatus,
   TwitchViewStatus
 } from '../lib/accountLinks';
@@ -141,18 +144,20 @@ const apiURL = inject<string>('apiURL');
 if (!apiURL) throw new Error('缺少 API 網址設定');
 
 const emptyAccountLinks = (): AccountLinks => ({
-  google: { status: 'unlinked' },
+  google: { status: 'unlinked', subscriptions: [], cleanupPending: false },
   twitch: { status: 'unlinked' }
 });
 const accountLinks = ref<AccountLinks>(emptyAccountLinks());
 const hasDiscordAccessToken = ref(false);
 const hasFetchedAccountLinks = ref(false);
+const hasAccountLinksSnapshot = ref(false);
 const isAccountLinksFetching = ref(false);
 const hasAccountLinksLoadError = ref(false);
 const startingProvider = ref<Provider | null>(null);
 const unlinkingProvider = ref<Provider | null>(null);
 const googleStatusOverride = ref<GoogleViewStatus | null>(null);
 const twitchStatusOverride = ref<TwitchViewStatus | null>(null);
+const googleOperationStatus = ref('');
 
 const errorText = ref('');
 const toastText = ref('');
@@ -281,12 +286,14 @@ const resetDiscordSession = () => {
   accountLinks.value = emptyAccountLinks();
   hasDiscordAccessToken.value = false;
   hasFetchedAccountLinks.value = false;
+  hasAccountLinksSnapshot.value = false;
   isAccountLinksFetching.value = false;
   hasAccountLinksLoadError.value = false;
   startingProvider.value = null;
   unlinkingProvider.value = null;
   googleStatusOverride.value = null;
   twitchStatusOverride.value = null;
+  googleOperationStatus.value = '';
 
   const url = new URL(location.href);
   url.searchParams.delete('provider');
@@ -303,7 +310,9 @@ const handleUnauthorized = (error: unknown): boolean => {
   return true;
 };
 
-const refreshAccountLinks = async (): Promise<boolean> => {
+const refreshAccountLinks = async (
+  preserveGoogleOperationStatus = false
+): Promise<boolean> => {
   if (isAccountLinksFetching.value) return false;
 
   const discordToken = sessionStorage.getItem('DT');
@@ -313,15 +322,20 @@ const refreshAccountLinks = async (): Promise<boolean> => {
 
   try {
     accountLinks.value = await getAccountLinks(apiURL, discordToken);
+    hasAccountLinksSnapshot.value = true;
     googleStatusOverride.value = null;
     twitchStatusOverride.value = null;
+    if (!preserveGoogleOperationStatus) googleOperationStatus.value = '';
     hasAccountLinksLoadError.value = false;
     return true;
   } catch (error: unknown) {
     if (handleUnauthorized(error)) return false;
 
-    googleStatusOverride.value = 'error';
-    twitchStatusOverride.value = 'error';
+    if (!hasAccountLinksSnapshot.value) {
+      if (!accountLinks.value.google.cleanupPending)
+        googleStatusOverride.value = 'error';
+      twitchStatusOverride.value = 'error';
+    }
     hasAccountLinksLoadError.value = true;
     toast.error('無法取得帳號連結狀態，請稍後重試。');
     return false;
@@ -336,6 +350,12 @@ const retryAccountLinks = async () => {
   if (await refreshAccountLinks()) {
     if (!handleOAuthCallback(true)) toast('帳號連結資訊已更新。');
   }
+};
+
+const refreshGoogleStatus = async () => {
+  if (isAccountLinksFetching.value || isProviderPending.value) return;
+
+  await refreshAccountLinks();
 };
 
 const handleOAuthCallback = (statusLoaded: boolean): boolean => {
@@ -407,8 +427,10 @@ const startProvider = async (provider: Provider) => {
   }
 
   startingProvider.value = provider;
-  if (provider === 'google') googleStatusOverride.value = 'authorizing';
-  else twitchStatusOverride.value = 'authorizing';
+  if (provider === 'google') {
+    googleStatusOverride.value = 'authorizing';
+    googleOperationStatus.value = '正在開始 Google 授權。';
+  } else twitchStatusOverride.value = 'authorizing';
 
   try {
     const { authorizationUrl } = await startOAuth(
@@ -425,8 +447,10 @@ const startProvider = async (provider: Provider) => {
     startingProvider.value = null;
     if (handleUnauthorized(error)) return;
 
-    if (provider === 'google') googleStatusOverride.value = 'error';
-    else twitchStatusOverride.value = 'error';
+    if (provider === 'google') {
+      googleStatusOverride.value = 'error';
+      googleOperationStatus.value = '無法開始 Google 授權，請稍後重試。';
+    } else twitchStatusOverride.value = 'error';
     toast.error(
       provider === 'google'
         ? '無法開始 Google 授權，請稍後重試。'
@@ -445,27 +469,74 @@ const unlinkProvider = async (provider: Provider) => {
   }
 
   unlinkingProvider.value = provider;
+  if (provider === 'google')
+    googleOperationStatus.value = '正在向 Google 服務解除連結。';
 
+  let googleUnlinkResponse: GoogleUnlinkResponse | null = null;
   try {
-    await unlinkAccount(apiURL, discordToken, provider);
+    if (provider === 'google')
+      googleUnlinkResponse = await unlinkAccount(
+        apiURL,
+        discordToken,
+        provider
+      );
+    else await unlinkAccount(apiURL, discordToken, provider);
   } catch (error: unknown) {
     if (handleUnauthorized(error)) return;
 
-    toast.error(
-      provider === 'google'
-        ? '無法解除 Google 連結，請稍後重試。'
-        : '無法解除 Twitch 連結，請稍後重試。'
-    );
+    if (
+      provider === 'google' &&
+      error instanceof AccountLinksApiError &&
+      error.status === 503
+    ) {
+      googleOperationStatus.value =
+        'Google 服務端撤銷尚未完成，帳號仍維持目前連結狀態，請稍後重試。';
+      toast.error(
+        'Google 服務端撤銷尚未完成，帳號仍維持目前連結狀態，請稍後重試。'
+      );
+    } else if (
+      provider === 'google' &&
+      error instanceof AccountLinksApiError &&
+      error.status === 409
+    ) {
+      googleOperationStatus.value =
+        'Google 連結已在操作期間更新，未變更目前狀態，請重新整理後再試。';
+      toast.error(
+        'Google 連結已在操作期間更新，未變更目前狀態，請重新整理後再試。'
+      );
+    } else {
+      if (provider === 'google')
+        googleOperationStatus.value = '無法解除 Google 連結，請稍後重試。';
+      toast.error(
+        provider === 'google'
+          ? '無法解除 Google 連結，請稍後重試。'
+          : '無法解除 Twitch 連結，請稍後重試。'
+      );
+    }
+
     unlinkingProvider.value = null;
     return;
   }
 
-  if (provider === 'google') {
+  unlinkingProvider.value = null;
+
+  if (provider === 'google' && googleUnlinkResponse) {
     accountLinks.value = {
       ...accountLinks.value,
-      google: { status: 'unlinked' }
+      google: {
+        ...accountLinks.value.google,
+        status: 'unlinked',
+        cleanupPending: googleUnlinkResponse.cleanupPending
+      }
     };
-    toast('Google 已解除連結，YouTube 會員驗證功能將無法使用。');
+    toast(
+      googleUnlinkResponse.cleanupPending
+        ? 'Google 連結狀態已更新；Discord 身分組仍在背景清理。'
+        : 'Google 已解除連結，YouTube 會員驗證功能將無法使用。'
+    );
+    googleOperationStatus.value = googleUnlinkResponse.cleanupPending
+      ? 'Google 已解除連結；Discord 身分組仍在背景清理。'
+      : 'Google 已解除連結，YouTube 會員驗證功能將無法使用。';
   } else {
     accountLinks.value = {
       ...accountLinks.value,
@@ -476,8 +547,7 @@ const unlinkProvider = async (provider: Provider) => {
     );
   }
 
-  unlinkingProvider.value = null;
-  await refreshAccountLinks();
+  await refreshAccountLinks(true);
 };
 
 watch(errorText, () => {

@@ -1,10 +1,14 @@
 <template>
-  <div
+  <header
     class="w-full fixed shadow-lg h-14 flex justify-space-between items-center bg-neutral-800 px-4"
   >
     <div class="left-side">
-      <a href="/" data-spa-link class="cursor-pointer flex items-center">
-        <img src="/DYML.png" class="w-10 h-10 mr-2" />
+      <a
+        href="/"
+        data-spa-link
+        class="cursor-pointer flex min-h-11 items-center"
+      >
+        <img src="/DYML.png" alt="" class="w-10 h-10 mr-2" />
         直播小幫手
       </a>
     </div>
@@ -17,5 +21,5 @@
         邀請機器人
       </a>
     </div>
-  </div>
+  </header>
 </template>

@@ -5,12 +5,20 @@ html {
   @apply text-zinc-300;
 }
 
+a:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
 .divider {
   @apply w-full bg-zinc-800;
   height: 1px;
 }
 
 .btn {
+  @apply inline-flex;
+  @apply items-center;
+  @apply justify-center;
   @apply px-3;
   @apply py-1;
   @apply rounded;
@@ -18,6 +26,12 @@ html {
   @apply relative;
   @apply overflow-hidden;
   min-width: 96px;
+  min-height: 44px;
+
+  &:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+  }
 
   &::before {
     display: block;

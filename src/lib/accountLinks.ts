@@ -1,23 +1,24 @@
 export type GoogleLinkStatus = 'linked' | 'unlinked' | 'invalid';
-export type TwitchLinkStatus =
-  | 'linked'
-  | 'unlinked'
-  | 'invalid'
-  | 'revoked';
+export type TwitchLinkStatus = 'linked' | 'unlinked' | 'invalid' | 'revoked';
 
-export type GoogleViewStatus =
-  | GoogleLinkStatus
-  | 'authorizing'
-  | 'error';
-export type TwitchViewStatus =
-  | TwitchLinkStatus
-  | 'authorizing'
-  | 'error';
+export type GoogleViewStatus = GoogleLinkStatus | 'authorizing' | 'error';
+export type TwitchViewStatus = TwitchLinkStatus | 'authorizing' | 'error';
 
 export interface GoogleAccountLink {
   status: GoogleLinkStatus;
+  channelId?: string;
   userName?: string;
   profileImageUrl?: string;
+  subscriptions: GoogleMemberSubscription[];
+  cleanupPending: boolean;
+}
+
+export interface GoogleMemberSubscription {
+  guildId: string;
+  channelId: string;
+  isChecked: boolean;
+  pendingRoleRemoval: boolean;
+  lastCheckedAt: string;
 }
 
 export interface TwitchAccountLink {
@@ -35,6 +36,16 @@ export interface AccountLinks {
 
 interface OAuthStartResponse {
   authorizationUrl: string;
+}
+
+export interface GoogleUnlinkResponse {
+  status: 'unlinked';
+  cleanupPending: boolean;
+}
+
+export interface TwitchUnlinkResponse {
+  status: 'revoked' | 'revocation_pending';
+  message: string;
 }
 
 export class AccountLinksApiError extends Error {
@@ -90,14 +101,25 @@ export const startOAuth = (
     'POST'
   );
 
-export const unlinkAccount = (
+export function unlinkAccount(
+  apiUrl: string,
+  discordToken: string,
+  provider: 'google'
+): Promise<GoogleUnlinkResponse>;
+export function unlinkAccount(
+  apiUrl: string,
+  discordToken: string,
+  provider: 'twitch'
+): Promise<TwitchUnlinkResponse>;
+export function unlinkAccount(
   apiUrl: string,
   discordToken: string,
   provider: 'google' | 'twitch'
-): Promise<void> =>
-  authorizedRequest<void>(
+): Promise<GoogleUnlinkResponse | TwitchUnlinkResponse> {
+  return authorizedRequest<GoogleUnlinkResponse | TwitchUnlinkResponse>(
     apiUrl,
     discordToken,
     `/account-links/${provider}`,
     'DELETE'
   );
+}

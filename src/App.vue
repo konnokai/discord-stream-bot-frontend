@@ -1,7 +1,7 @@
 <template>
   <Header />
   <div class="h-14"></div>
-  <div class="container mx-auto p-4">
+  <main class="container mx-auto p-4">
     <PrivacyPage v-if="currentPath === '/privacy'" />
     <TermsPage v-else-if="currentPath === '/terms'" />
     <Page404 v-else-if="currentPath !== '/'" />
@@ -11,7 +11,7 @@
         <VerifyWindow />
       </div>
     </template>
-  </div>
+  </main>
   <Footer />
 </template>
 

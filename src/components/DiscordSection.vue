@@ -50,6 +50,7 @@
               <img
                 v-if="!isNoBanner(userInfo)"
                 :src="`https://cdn.discordapp.com/banners/${userInfo.id}/${userInfo.banner}?size=320`"
+                alt=""
                 class="w-full"
               />
             </div>
@@ -59,6 +60,7 @@
               >
                 <img
                   :src="`https://cdn.discordapp.com/avatars/${userInfo.id}/${userInfo.avatar}?size=96`"
+                  alt=""
                   class="rounded-full"
                 />
               </div>

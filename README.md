@@ -14,6 +14,14 @@ Vue 3、TypeScript 與 Vite 建置的《直播小幫手》帳號連結 SPA，部
 
 Discord 為必要登入。Google 與 Twitch 都是互不依賴的選用功能，頁面不要求使用者完成任一平台，也不顯示整體流程完成狀態。
 
+## Google 帳號連結與清理狀態
+
+`GET /account-links` 的 `google` 物件包含 `channelId`、`subscriptions` 與 `cleanupPending`。每筆 `subscriptions` 的 `guildId` 與 `channelId` 都是字串，並包含 `isChecked`、`pendingRoleRemoval` 與 ISO 8601 格式的 `lastCheckedAt`。
+
+`DELETE /account-links/google` 在無待清理身分組時回傳 HTTP 200，有待清理身分組時回傳 HTTP 202；兩者皆回傳 `{"status":"unlinked","cleanupPending":boolean}`。前端將 OAuth 連結狀態與 Discord 身分組清理狀態分開顯示：`cleanupPending=true` 時持續顯示「身分組清理中」，使用者可手動重新取得狀態，頁面不會輪詢。若 DELETE 回傳 503，代表 Google provider revoke 尚未完成，前端必須保留既有帳號狀態，不可先將帳號標為未連結。
+
+完成 Google 連結後，伺服器管理員設定驗證流程時，一般成員可回到 Discord 執行 `/youtube-member check`。連結帳號的名稱與頭像一律標示為 YouTube 頻道，不當作 Google 個人檔案。
+
 ## Twitch 選用功能
 
 Twitch 訂閱驗證流程如下：
