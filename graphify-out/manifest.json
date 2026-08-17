@@ -55,8 +55,8 @@
     "semantic_hash": ""
   },
   "src/components/GoogleSection.vue": {
-    "mtime": 1786942752.5622456,
-    "ast_hash": "71aa8808512592f5df47fd1eb476b489",
+    "mtime": 1786948363.2368896,
+    "ast_hash": "8f318dea0f77b86b66fc2d3c51ff523a",
     "semantic_hash": ""
   },
   "src/components/Header.vue": {
@@ -70,8 +70,8 @@
     "semantic_hash": ""
   },
   "src/components/TwitchSection.vue": {
-    "mtime": 1786942752.6041608,
-    "ast_hash": "15e51bfada53db6e5c3311c4d4c327c3",
+    "mtime": 1786948389.057906,
+    "ast_hash": "f786c94a26dcac9b5d136f41ab36193e",
     "semantic_hash": ""
   },
   "src/env.d.ts": {
