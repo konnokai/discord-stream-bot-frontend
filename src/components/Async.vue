@@ -1,13 +1,11 @@
 <template>
   <div>
-    <ProgresserCircular v-if="isLoading" v-bind="$attrs"></ProgresserCircular>
     <slot v-if="shoudShowContent" :res="res"></slot>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
-import ProgresserCircular from './ProgresserCircular.vue';
 
 const props = defineProps({
   fn: {

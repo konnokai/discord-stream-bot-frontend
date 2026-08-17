@@ -15,6 +15,33 @@ a:focus-visible {
   height: 1px;
 }
 
+.loading-progress-track {
+  @apply h-1.5 overflow-hidden rounded-full bg-zinc-700;
+}
+
+.loading-progress-value {
+  @apply block h-full rounded-full bg-indigo-500;
+  width: 45%;
+  animation: loading-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes loading-progress {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(245%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-progress-value {
+    width: 100%;
+    animation: none;
+  }
+}
+
 .btn {
   @apply inline-flex;
   @apply items-center;

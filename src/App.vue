@@ -1,9 +1,12 @@
 <template>
   <Header />
   <div class="h-14"></div>
-  <main class="container mx-auto p-4">
+  <main
+    :class="currentPath === '/settings' ? 'w-full' : 'container mx-auto p-4'"
+  >
     <PrivacyPage v-if="currentPath === '/privacy'" />
     <TermsPage v-else-if="currentPath === '/terms'" />
+    <SettingsPage v-else-if="currentPath === '/settings'" />
     <Page404 v-else-if="currentPath !== '/'" />
     <template v-else>
       <HomePage />
@@ -25,6 +28,7 @@ import TermsPage from './page/TermsPage.vue';
 import Footer from './components/Footer.vue';
 import Header from './components/Header.vue';
 import Page404 from './page/Page404.vue';
+import SettingsPage from './page/SettingsPage.vue';
 
 const normalizePath = (path: string) =>
   path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
@@ -70,9 +74,11 @@ watch(
         ? '直播小幫手帳號連結隱私權政策'
         : path === '/terms'
           ? '直播小幫手帳號連結使用條款'
-          : path === '/'
-            ? '直播小幫手'
-            : '找不到頁面 | 直播小幫手';
+          : path === '/settings'
+            ? '伺服器設定 | 直播小幫手'
+            : path === '/'
+              ? '直播小幫手'
+              : '找不到頁面 | 直播小幫手';
   },
   { immediate: true }
 );

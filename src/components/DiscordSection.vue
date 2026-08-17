@@ -15,7 +15,7 @@
           }"
           @click="openDiscord"
         >
-          {{ isAuthed ? 'Discord 已驗證' : '登入 Discord' }}
+          {{ isAuthed ? '已登入 Discord' : '登入 Discord' }}
         </button>
 
         <svg
@@ -81,14 +81,43 @@
         </div>
       </Async>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="isFetching"
+        class="fixed inset-0 z-[100] grid place-items-center bg-neutral-950/90 px-6 backdrop-blur-sm"
+        role="status"
+        aria-live="assertive"
+        aria-atomic="true"
+      >
+        <div class="w-full max-w-md text-center">
+          <p class="text-lg font-bold text-white">正在完成 Discord 登入</p>
+          <p class="mt-2 text-sm text-zinc-300">
+            正在取得網站所需資料，完成前請勿關閉此頁面
+          </p>
+          <div
+            class="loading-progress-track mt-6"
+            role="progressbar"
+            aria-label="正在取得資料"
+          >
+            <span class="loading-progress-value"></span>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onMounted, ref } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue';
 import Async from './Async.vue';
+import {
+  discordOAuthReturnPathKey,
+  discordOAuthStateKey,
+  startDiscordOAuth
+} from '../lib/discordOAuth';
 
-const discordClientId = inject('discordClientId');
+const discordClientId = inject<string>('discordClientId');
 const apiURL = inject('apiURL');
 
 interface DiscordUser {
@@ -114,10 +143,29 @@ interface Toast {
 const toast = inject<Toast>('toast');
 if (!toast) throw new Error('缺少通知服務設定');
 
-const discordOAuthStateKey = 'discordOAuthState';
 const emit = defineEmits(['auth']);
 const userInfo = ref<DiscordUser>({} as DiscordUser);
 const isFetching = ref<boolean>(false);
+let previousBodyOverflow = '';
+let isPageLocked = false;
+
+const setFetching = (value: boolean) => {
+  isFetching.value = value;
+  if (value === isPageLocked) return;
+
+  const app = document.querySelector<HTMLElement>('#app');
+
+  if (value) {
+    previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    app?.setAttribute('inert', '');
+  } else {
+    document.body.style.overflow = previousBodyOverflow;
+    app?.removeAttribute('inert');
+  }
+
+  isPageLocked = value;
+};
 
 const isAuthed = computed<boolean>(() => !!userInfo.value.id);
 const isNoBanner = (userInfo: DiscordUser): boolean =>
@@ -176,10 +224,10 @@ const fetchDiscordToken: AsyncFn<DiscordTokenResponse> = async () => {
     return { error: 'invalid state' };
   }
 
-  isFetching.value = true;
+  setFetching(true);
 
   try {
-    if (!discordCode) throw new Error('Discord 登入回傳缺少授權碼。');
+    if (!discordCode) throw new Error('Discord 登入回應缺少授權碼。');
 
     const result = await fetch(`${apiURL}/oauth/discord/callback`, {
       method: 'POST',
@@ -198,6 +246,17 @@ const fetchDiscordToken: AsyncFn<DiscordTokenResponse> = async () => {
 
     sessionStorage.setItem('DT', discordToken);
     sessionStorage.setItem('DD', JSON.stringify(userInfo.value)); // DiscordData
+    const returnPath = sessionStorage.getItem(discordOAuthReturnPathKey);
+    sessionStorage.removeItem(discordOAuthReturnPathKey);
+    if (
+      returnPath &&
+      returnPath !== '/' &&
+      returnPath.startsWith('/') &&
+      !returnPath.startsWith('//')
+    ) {
+      location.replace(returnPath);
+      return { discordToken };
+    }
     return { discordToken };
   } catch (error: unknown) {
     console.error(error);
@@ -214,26 +273,16 @@ const fetchDiscordToken: AsyncFn<DiscordTokenResponse> = async () => {
       '',
       `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
     );
-    isFetching.value = false;
+    setFetching(false);
   }
 };
 
+onBeforeUnmount(() => setFetching(false));
+
 const openDiscord = () => {
   if (isAuthed.value) return;
-  const stateBytes = crypto.getRandomValues(new Uint8Array(32));
-  const state = Array.from(stateBytes, (value) =>
-    value.toString(16).padStart(2, '0')
-  ).join('');
-  sessionStorage.setItem(discordOAuthStateKey, state);
-
-  const params = new URLSearchParams({
-    client_id: String(discordClientId),
-    redirect_uri: `${location.origin}/`,
-    response_type: 'code',
-    scope: 'identify',
-    state
-  });
-  location.href = `https://discord.com/api/oauth2/authorize?${params}`;
+  if (!discordClientId) throw new Error('缺少 Discord Client ID 設定');
+  startDiscordOAuth(discordClientId);
 };
 </script>
 

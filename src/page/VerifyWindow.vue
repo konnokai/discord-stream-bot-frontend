@@ -7,14 +7,14 @@
     <div class="h-3"></div>
     <p>Member Link 可以自動驗證會員資格</p>
     <p>
-      請先完成
+      請先
       <strong class="text-indigo-400">Discord</strong>
-      登入，再視需要連結
-      <strong class="text-red-400">YouTube (Google 帳戶)</strong>
+      登入，再依需求連結
+      <strong class="text-red-400">YouTube（Google 帳戶）</strong>
       或
       <strong class="text-purple-300">Twitch</strong>
     </p>
-    <p>Google 與 Twitch 都是選用，也可以同時連結</p>
+    <p>Google 與 Twitch 都可選擇連結，也可同時連結</p>
     <p>
       如果伺服器內沒有操作說明，可以參考
       <a
@@ -37,12 +37,28 @@
         v-if="needsDiscordRelogin"
         class="rounded bg-amber-900 p-3 text-sm text-amber-100 text-center"
       >
-        Discord 登入已失效，請重新登入後再進行帳號連結。
+        Discord 登入已失效，請重新登入後再進行帳號連結
       </p>
     </div>
   </div>
 
   <div v-if="hasDiscordAccessToken" class="mt-2">
+    <div
+      v-if="backendLoadingText"
+      class="mx-2 mb-3 text-left text-sm text-zinc-400"
+      role="status"
+      aria-live="polite"
+    >
+      <p>{{ backendLoadingText }}</p>
+      <div
+        class="loading-progress-track mt-3"
+        role="progressbar"
+        :aria-label="backendLoadingText"
+      >
+        <span class="loading-progress-value"></span>
+      </div>
+    </div>
+
     <Async
       :loading="isAccountLinksFetching"
       :remain-content="hasAccountLinksLoadError"
@@ -53,8 +69,8 @@
         class="mx-2 mb-3 rounded bg-amber-900 p-4 text-sm text-amber-100"
       >
         <p>
-          目前無法取得最新的帳號連結狀態。您可以繼續嘗試連結 Google 或
-          Twitch，或重新載入連結資訊。
+          目前無法取得最新帳號連結狀態。您仍可連結 Google 或
+          Twitch，或重新載入連結資訊
         </p>
         <div class="mt-3 flex justify-center">
           <button
@@ -279,6 +295,14 @@ const twitchStatus = computed<TwitchViewStatus>(() => {
 const isProviderPending = computed(
   () => startingProvider.value !== null || unlinkingProvider.value !== null
 );
+const backendLoadingText = computed(() => {
+  if (isAccountLinksFetching.value) return '正在取得帳號連結資訊…';
+  if (startingProvider.value)
+    return `正在準備 ${startingProvider.value === 'google' ? 'Google' : 'Twitch'} 授權…`;
+  if (unlinkingProvider.value)
+    return `正在解除 ${unlinkingProvider.value === 'google' ? 'Google' : 'Twitch'} 連結…`;
+  return '';
+});
 
 const resetDiscordSession = () => {
   sessionStorage.removeItem('DT');
@@ -381,7 +405,7 @@ const handleOAuthCallback = (statusLoaded: boolean): boolean => {
       toast(
         callback.provider === 'google'
           ? 'Google 已成功連結，可使用 YouTube 會員驗證功能。'
-          : 'Twitch 已成功連結。可使用 Twitch 訂閱驗證功能。'
+          : 'Twitch 已成功連結，現在可使用 Twitch 訂閱驗證功能。'
       );
   } else {
     if (
@@ -470,7 +494,7 @@ const unlinkProvider = async (provider: Provider) => {
 
   unlinkingProvider.value = provider;
   if (provider === 'google')
-    googleOperationStatus.value = '正在向 Google 服務解除連結。';
+    googleOperationStatus.value = '正在解除 Google 連結。';
 
   let googleUnlinkResponse: GoogleUnlinkResponse | null = null;
   try {
@@ -490,9 +514,9 @@ const unlinkProvider = async (provider: Provider) => {
       error.status === 503
     ) {
       googleOperationStatus.value =
-        'Google 服務端撤銷尚未完成，帳號仍維持目前連結狀態，請稍後重試。';
+        'Google 端的撤銷作業尚未完成，帳號仍維持目前的連結狀態，請稍後再試。';
       toast.error(
-        'Google 服務端撤銷尚未完成，帳號仍維持目前連結狀態，請稍後重試。'
+        'Google 端的撤銷作業尚未完成，帳號仍維持目前的連結狀態，請稍後再試。'
       );
     } else if (
       provider === 'google' &&
@@ -500,9 +524,9 @@ const unlinkProvider = async (provider: Provider) => {
       error.status === 409
     ) {
       googleOperationStatus.value =
-        'Google 連結已在操作期間更新，未變更目前狀態，請重新整理後再試。';
+        '操作期間 Google 連結狀態已變更，本次未更新目前狀態，請重新整理後再試。';
       toast.error(
-        'Google 連結已在操作期間更新，未變更目前狀態，請重新整理後再試。'
+        '操作期間 Google 連結狀態已變更，本次未更新目前狀態，請重新整理後再試。'
       );
     } else {
       if (provider === 'google')
@@ -531,7 +555,7 @@ const unlinkProvider = async (provider: Provider) => {
     };
     toast(
       googleUnlinkResponse.cleanupPending
-        ? 'Google 連結狀態已更新；Discord 身分組仍在背景清理。'
+        ? 'Google 已解除連結，Discord 身分組仍在背景清理。'
         : 'Google 已解除連結，YouTube 會員驗證功能將無法使用。'
     );
     googleOperationStatus.value = googleUnlinkResponse.cleanupPending
@@ -543,7 +567,7 @@ const unlinkProvider = async (provider: Provider) => {
       twitch: { ...accountLinks.value.twitch, status: 'revoked' }
     };
     toast(
-      'Twitch 已解除連結，訂閱驗證會被停止並移除已授予的身分組；若有使用 Twitch 爬蟲而伺服器人數低於 200 人，則會一併移除 Twitch 爬蟲。'
+      'Twitch 已解除連結，訂閱驗證將停止，系統也會移除已授予的身分組。若伺服器使用 Twitch 爬蟲且人數低於 200 人，也會一併移除 Twitch 爬蟲。'
     );
   }
 
