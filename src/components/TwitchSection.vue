@@ -19,17 +19,17 @@
 
     <p class="text-sm leading-6 text-zinc-300 mb-4">
       完成 Discord 與 Twitch 帳號連結後，伺服器管理員會在 Discord
-      設定驗證頻道與共用訂閱身分組；一般成員不需進行設定。
+      設定驗證頻道與共用訂閱身分組；一般成員不需進行設定
     </p>
     <p class="text-sm leading-6 text-zinc-300 mb-4">
       管理員完成設定後，一般成員請回到 Discord 執行
-      <code>/twitch-member check</code>
-      。Bot 會查詢您目前是否訂閱該頻道及訂閱 Tier，並授予共用與對應 Tier
-      的訂閱身分組。
+      <code>/twitch-subscription check</code>
+      ；Bot 會查詢您目前是否訂閱該頻道及訂閱層級，並授予共用與對應層級
+      的訂閱身分組
     </p>
     <p class="text-sm leading-6 text-zinc-300 mb-5">
       此授權也可用來設定您的 Twitch 直播爬蟲。完成授權後，即使伺服器未滿 200
-      人，也能新增自己的 Twitch 頻道爬蟲。
+      人，也能新增自己的 Twitch 頻道爬蟲
     </p>
 
     <div
@@ -56,17 +56,17 @@
 
     <p v-if="status === 'invalid'" class="text-sm text-amber-300 mb-4">
       Twitch
-      授權已失效，訂閱驗證會停止，且由驗證授予的身分組可能會遭清理。若伺服器未滿
-      200 人，系統也可能移除直播爬蟲；如果頻道正在直播，會等到直播結束後再移除。
+      授權已失效，訂閱驗證會停止，系統也可能清理驗證時授予的身分組。若伺服器未滿
+      200 人，系統也可能移除直播爬蟲；如果頻道正在直播，會等到直播結束後再移除
     </p>
     <p v-else-if="status === 'revoked'" class="text-sm text-amber-300 mb-4">
       Twitch
-      授權已撤銷，訂閱驗證會停止，且由驗證授予的身分組可能會遭清理。若要繼續使用訂閱驗證或直播爬蟲，請重新連結
-      Twitch；未滿 200
-      人的伺服器也可能移除直播爬蟲，直播中則會延後至關台後處理。
+      授權已撤銷，訂閱驗證會停止，系統也可能清理驗證時授予的身分組。若要繼續使用訂閱驗證或直播爬蟲，請重新連結
+      Twitch。伺服器未滿 200
+      人時，系統也可能移除直播爬蟲；若頻道正在直播，會延後至關台後處理
     </p>
     <p v-else-if="status === 'error'" class="text-sm text-red-300 mb-4">
-      無法完成 Twitch 授權或取得最新狀態，請稍後重試。
+      無法完成 Twitch 授權或取得最新狀態，請稍後重試
     </p>
 
     <div class="mt-auto flex flex-wrap justify-center gap-3">
@@ -94,9 +94,9 @@
     >
       <p class="font-bold text-amber-300 mb-2">解除前請確認</p>
       <p>
-        解除連結後，訂閱驗證會停止，系統可能清理由驗證授予的身分組；未滿 200
-        人的伺服器也可能自動移除 Twitch
-        爬蟲。如果頻道正在直播，系統會等到直播結束後再移除，以免漏掉直播更新與關台通知。原有的通知設定仍會保留，但暫時不會生效。
+        解除連結後，訂閱驗證會停止，系統可能清理驗證時授予的身分組。伺服器未滿
+        200 人時，也可能自動移除 Twitch
+        爬蟲；若頻道正在直播，會等到關台後再移除，以免漏掉直播更新與關台通知。原有通知設定仍會保留，但暫時不會生效
       </p>
       <div class="flex flex-wrap justify-end gap-3 mt-4">
         <button
