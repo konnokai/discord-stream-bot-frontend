@@ -1,16 +1,16 @@
 # Graph Report - auto-discord-ytmember-checker  (2026-08-17)
 
 ## Corpus Check
-- 33 files · ~36,023 words
+- 35 files · ~36,925 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 349 nodes · 461 edges · 51 communities (25 shown, 26 thin omitted)
+- 371 nodes · 494 edges · 53 communities (27 shown, 26 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 5 edges (avg confidence: 0.68)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a6c17a6b`
+- Built from commit: `563cc4b0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -59,6 +59,8 @@
 - roleName
 - modules.d.ts
 - type.d.ts
+- RoleMentionField.vue
+- loadSettings
 
 ## God Nodes (most connected - your core abstractions)
 1. `runMutation()` - 19 edges
@@ -81,17 +83,17 @@
   src/page/VerifyWindow.vue → src/lib/accountLinks.ts
 - `unlinkProvider()` --calls--> `unlinkAccount()`  [EXTRACTED]
   src/page/VerifyWindow.vue → src/lib/accountLinks.ts
-- `runMutation()` --calls--> `mutateGuildSettings()`  [EXTRACTED]
+- `loadGuilds()` --calls--> `getAdminGuilds()`  [EXTRACTED]
   src/page/SettingsPage.vue → src/lib/adminSettings.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (51 total, 26 thin omitted)
+## Communities (53 total, 26 thin omitted)
 
 ### Community 0 - "SettingsPage.vue"
 Cohesion: 0.04
-Nodes (48): activeCrawler, activeFeature, activeFeatureLabel, activePlatform, activePlatformLabel, activeVerification, apiURL, availablePlatforms (+40 more)
+Nodes (50): activeCrawler, activeFeature, activeFeatureLabel, activePlatform, activePlatformLabel, activeVerification, apiURL, availablePlatforms (+42 more)
 
 ### Community 1 - "VerifyWindow.vue"
 Cohesion: 0.08
@@ -110,12 +112,12 @@ Cohesion: 0.09
 Nodes (21): dependencies, tailwindcss, vue, vue3-google-oauth2, engines, node, pnpm, name (+13 more)
 
 ### Community 5 - "adminSettings.ts"
-Cohesion: 0.15
-Nodes (15): AdminChannel, AdminCrawlerItem, AdminCrawlerPlatform, AdminGuild, AdminMutationAction, AdminMutationReply, AdminReplyState, AdminRole (+7 more)
+Cohesion: 0.16
+Nodes (16): AdminChannel, AdminCrawlerItem, AdminCrawlerPlatform, AdminGuild, AdminMutationAction, AdminMutationReply, AdminReplyState, AdminSettingsApiError (+8 more)
 
 ### Community 6 - "refreshAddedNotification"
-Cohesion: 0.18
-Nodes (15): getAdminGuilds(), getGuildSettings(), discordToken(), emptyCrawler(), emptyTwitCasting(), emptyTwitch(), emptyYouTube(), loadGuilds() (+7 more)
+Cohesion: 0.43
+Nodes (7): emptyCrawler(), emptyTwitCasting(), emptyTwitch(), emptyYouTube(), normalizeSnapshot(), refreshAddedNotification(), useSnapshot()
 
 ### Community 7 - "accountLinks.ts"
 Cohesion: 0.18
@@ -154,15 +156,23 @@ Cohesion: 0.52
 Nodes (6): getRandomFrom(), random(), randomAlphabat(), randomDate(), randomNAString(), randomNumString()
 
 ### Community 16 - "setFormLoading"
-Cohesion: 0.29
-Nodes (7): isFormLoading(), mutationKey(), saveTwitCasting(), saveTwitch(), saveYouTube(), setFormLoading(), twitchMessages()
+Cohesion: 0.25
+Nodes (8): isFormLoading(), isMutationLoading(), mutationKey(), saveTwitCasting(), saveTwitch(), saveYouTube(), setFormLoading(), twitchMessages()
 
 ### Community 18 - "stopGuildDrag"
 Cohesion: 0.67
 Nodes (3): dragGuildList(), finishGuildDrag(), stopGuildDrag()
 
+### Community 51 - "RoleMentionField.vue"
+Cohesion: 0.16
+Nodes (17): activeIndex, activeOptionId, closeMenu(), emit, field, filteredRoles, handleInput(), handleKeydown() (+9 more)
+
+### Community 52 - "loadSettings"
+Cohesion: 0.33
+Nodes (6): discordToken(), loadGuilds(), loadSettings(), reloadAfterUnknown(), selectGuild(), updateGuildScrollHints()
+
 ## Knowledge Gaps
-- **178 isolated node(s):** `name`, `version`, `packageManager`, `node`, `pnpm` (+173 more)
+- **188 isolated node(s):** `name`, `version`, `packageManager`, `node`, `pnpm` (+183 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **26 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -170,13 +180,13 @@ Nodes (3): dragGuildList(), finishGuildDrag(), stopGuildDrag()
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `devDependencies` connect `devDependencies` to `scripts`, `autoprefixer`, `eslint-config-prettier`, `eslint-plugin-vue`, `postcss`, `postcss-html`, `postcss-scss`, `prettier`, `sass`, `stylelint`, `stylelint-config-recommended`, `stylelint-config-standard`, `@tailwindcss/postcss`, `tslib`, `@types/node`, `typescript`, `@typescript-eslint/eslint-plugin`, `vite`, `@vitejs/plugin-vue`, `@vue/eslint-config-prettier`, `@vue/eslint-config-typescript`, `vue-tsc`, `wrangler`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
 - **Why does `startDiscordOAuth()` connect `DiscordSection.vue` to `SettingsPage.vue`?**
-  _High betweenness centrality (0.021) - this node is a cross-community bridge._
+  _High betweenness centrality (0.022) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `packageManager` to the rest of the system?**
-  _178 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _188 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `SettingsPage.vue` be split into smaller, more focused modules?**
-  _Cohesion score 0.03773584905660377 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03508771929824561 - nodes in this community are weakly interconnected._
 - **Should `VerifyWindow.vue` be split into smaller, more focused modules?**
   _Cohesion score 0.07671957671957672 - nodes in this community are weakly interconnected._
 - **Should `DiscordSection.vue` be split into smaller, more focused modules?**

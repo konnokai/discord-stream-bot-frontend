@@ -120,8 +120,8 @@
     "semantic_hash": ""
   },
   "src/page/SettingsPage.vue": {
-    "mtime": 1786953764.5987024,
-    "ast_hash": "4086cead2a1df4f261785c73fdd235cd",
+    "mtime": 1786959447.0031648,
+    "ast_hash": "62787f4a74bd274637bf329d10f93011",
     "semantic_hash": ""
   },
   "src/page/TermsPage.vue": {
@@ -197,6 +197,16 @@
   "src/assets/favicon.png": {
     "mtime": 1784555289.0,
     "ast_hash": "fe612dd990767fcaf86b905aca61db15",
+    "semantic_hash": ""
+  },
+  "src/components/LoadingSpinner.vue": {
+    "mtime": 1786958875.7402303,
+    "ast_hash": "4e57013315778749d2d4cd3109a90241",
+    "semantic_hash": ""
+  },
+  "src/components/RoleMentionField.vue": {
+    "mtime": 1786958355.8616827,
+    "ast_hash": "f37a13bbeb57bf696672777c499b1c32",
     "semantic_hash": ""
   }
 }

@@ -182,9 +182,13 @@
             </div>
           </div>
 
-          <div v-if="selectedGuild?.botInstalled" class="mt-6">
+          <div
+            v-if="selectedGuild?.botInstalled"
+            class="mt-6"
+            :aria-busy="settingsLoading"
+          >
             <div
-              v-if="settingsLoading"
+              v-if="settingsLoading && !settings"
               class="rounded bg-zinc-900 p-5 text-zinc-400"
               role="status"
               aria-live="polite"
@@ -213,7 +217,9 @@
 
             <template v-else-if="settings">
               <div class="mb-5 rounded bg-zinc-900 p-4">
-                <div class="flex flex-wrap items-center justify-between gap-3">
+                <div
+                  class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
                     <h2 class="font-bold text-white">
                       {{ settings.guild.name }}
@@ -232,11 +238,12 @@
                     </p>
                   </div>
                   <button
-                    class="btn bg-zinc-700 active:bg-zinc-600"
-                    :disabled="hasPendingMutations"
+                    class="btn gap-2 bg-zinc-700 active:bg-zinc-600"
+                    :disabled="settingsLoading || hasPendingMutations"
                     @click="loadSettings"
                   >
-                    重新載入設定
+                    <LoadingSpinner v-if="settingsLoading" />
+                    {{ settingsLoading ? '重新載入中…' : '重新載入設定' }}
                   </button>
                 </div>
               </div>
@@ -309,11 +316,12 @@
                   <p>{{ replyText }}</p>
                   <button
                     v-if="mutationReply.state === 'unknown'"
-                    class="btn mt-3 bg-zinc-700 active:bg-zinc-600"
+                    class="btn mt-3 gap-2 bg-zinc-700 active:bg-zinc-600"
                     :disabled="settingsLoading"
                     @click="reloadAfterUnknown"
                   >
-                    重新載入設定
+                    <LoadingSpinner v-if="settingsLoading" />
+                    {{ settingsLoading ? '重新載入中…' : '重新載入設定' }}
                   </button>
                 </div>
               </Transition>
@@ -367,9 +375,10 @@
                     </select>
                   </label>
                   <button
-                    class="btn mt-3 bg-indigo-600 active:bg-indigo-500"
+                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
                     :disabled="isFormLoading('general')"
                   >
+                    <LoadingSpinner v-if="isFormLoading('general')" />
                     {{ isFormLoading('general') ? '儲存中…' : '儲存設定' }}
                   </button>
                 </form>
@@ -428,30 +437,36 @@
                         </option>
                       </select>
                     </label>
-                    <label>
-                      新直播訊息
-                      <input v-model="item.messages.newStream" class="field" />
-                    </label>
-                    <label>
-                      新影片訊息
-                      <input v-model="item.messages.newVideo" class="field" />
-                    </label>
-                    <label>
-                      直播開始訊息
-                      <input v-model="item.messages.start" class="field" />
-                    </label>
-                    <label>
-                      直播結束訊息
-                      <input v-model="item.messages.end" class="field" />
-                    </label>
-                    <label>
-                      時間變更訊息
-                      <input v-model="item.messages.changeTime" class="field" />
-                    </label>
-                    <label>
-                      直播刪除訊息
-                      <input v-model="item.messages.delete" class="field" />
-                    </label>
+                    <RoleMentionField
+                      v-model="item.messages.newStream"
+                      label="新直播訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="item.messages.newVideo"
+                      label="新影片訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="item.messages.start"
+                      label="直播開始訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="item.messages.end"
+                      label="直播結束訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="item.messages.changeTime"
+                      label="時間變更訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="item.messages.delete"
+                      label="直播刪除訊息"
+                      :roles="mentionRoles"
+                    />
                     <label class="checkbox-label">
                       <input v-model="item.createEvent" type="checkbox" />
                       建立 Discord 排程活動
@@ -462,25 +477,58 @@
                     class="mt-3 text-sm text-amber-300"
                   >
                     設定已儲存，但目前未啟用偵測，因此不會傳送通知
+                    <button
+                      type="button"
+                      class="ml-2 font-medium underline underline-offset-2"
+                      @click="openCrawler('youtube', item.source)"
+                    >
+                      前往新增 YouTube 爬蟲
+                    </button>
                   </p>
                   <div class="mt-3 flex flex-wrap gap-3">
                     <button
-                      class="btn bg-indigo-600 active:bg-indigo-500"
+                      class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
                       :disabled="isFormLoading(`youtube:${item.source}`)"
                     >
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `youtube:${item.source}`,
+                            'youtube-notification.upsert'
+                          )
+                        "
+                      />
                       {{
-                        isFormLoading(`youtube:${item.source}`)
+                        isMutationLoading(
+                          `youtube:${item.source}`,
+                          'youtube-notification.upsert'
+                        )
                           ? '儲存中…'
                           : '儲存'
                       }}
                     </button>
                     <button
                       type="button"
-                      class="btn bg-red-800 active:bg-red-700"
+                      class="btn gap-2 bg-red-800 active:bg-red-700"
                       :disabled="isFormLoading(`youtube:${item.source}`)"
                       @click="removeYouTube(item.source)"
                     >
-                      移除
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `youtube:${item.source}`,
+                            'youtube-notification.remove'
+                          )
+                        "
+                      />
+                      {{
+                        isMutationLoading(
+                          `youtube:${item.source}`,
+                          'youtube-notification.remove'
+                        )
+                          ? '移除中…'
+                          : '移除'
+                      }}
                     </button>
                   </div>
                 </form>
@@ -529,54 +577,53 @@
                         </option>
                       </select>
                     </label>
-                    <label>
-                      新直播訊息
-                      <input
-                        v-model="newYouTube.messages.newStream"
-                        class="field"
-                      />
-                    </label>
-                    <label>
-                      新影片訊息
-                      <input
-                        v-model="newYouTube.messages.newVideo"
-                        class="field"
-                      />
-                    </label>
-                    <label>
-                      直播開始訊息
-                      <input
-                        v-model="newYouTube.messages.start"
-                        class="field"
-                      />
-                    </label>
-                    <label>
-                      直播結束訊息
-                      <input v-model="newYouTube.messages.end" class="field" />
-                    </label>
-                    <label>
-                      時間變更訊息
-                      <input
-                        v-model="newYouTube.messages.changeTime"
-                        class="field"
-                      />
-                    </label>
-                    <label>
-                      直播刪除訊息
-                      <input
-                        v-model="newYouTube.messages.delete"
-                        class="field"
-                      />
-                    </label>
+                    <RoleMentionField
+                      v-model="newYouTube.messages.newStream"
+                      label="新直播訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="newYouTube.messages.newVideo"
+                      label="新影片訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="newYouTube.messages.start"
+                      label="直播開始訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="newYouTube.messages.end"
+                      label="直播結束訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="newYouTube.messages.changeTime"
+                      label="時間變更訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="newYouTube.messages.delete"
+                      label="直播刪除訊息"
+                      :roles="mentionRoles"
+                    />
                     <label class="checkbox-label">
                       <input v-model="newYouTube.createEvent" type="checkbox" />
                       建立 Discord 排程活動
                     </label>
                   </div>
                   <button
-                    class="btn mt-3 bg-indigo-600 active:bg-indigo-500"
+                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
                     :disabled="isFormLoading('youtube:new')"
                   >
+                    <LoadingSpinner
+                      v-if="
+                        isMutationLoading(
+                          'youtube:new',
+                          'youtube-notification.upsert'
+                        )
+                      "
+                    />
                     {{ isFormLoading('youtube:new') ? '新增中…' : '新增通知' }}
                   </button>
                 </form>
@@ -615,43 +662,79 @@
                         </option>
                       </select>
                     </label>
-                    <label>
-                      開播訊息
-                      <input v-model="item.startMessage" class="field" />
-                    </label>
-                    <label>
-                      結束訊息
-                      <input v-model="item.endMessage" class="field" />
-                    </label>
-                    <label>
-                      變更訊息
-                      <input v-model="item.changeMessage" class="field" />
-                    </label>
+                    <RoleMentionField
+                      v-model="item.startMessage"
+                      label="開播訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="item.endMessage"
+                      label="結束訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="item.changeMessage"
+                      label="變更訊息"
+                      :roles="mentionRoles"
+                    />
                   </div>
                   <p
                     v-if="item.detectionEnabled === false"
                     class="mt-3 text-sm text-amber-300"
                   >
                     設定已儲存，但目前未啟用偵測，因此不會傳送通知
+                    <button
+                      type="button"
+                      class="ml-2 font-medium underline underline-offset-2"
+                      @click="openCrawler('twitch', item.source)"
+                    >
+                      前往新增 Twitch 爬蟲
+                    </button>
                   </p>
                   <div class="mt-3 flex flex-wrap gap-3">
                     <button
-                      class="btn bg-indigo-600 active:bg-indigo-500"
+                      class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
                       :disabled="isFormLoading(`twitch:${item.source}`)"
                     >
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `twitch:${item.source}`,
+                            'twitch-notification.upsert'
+                          )
+                        "
+                      />
                       {{
-                        isFormLoading(`twitch:${item.source}`)
+                        isMutationLoading(
+                          `twitch:${item.source}`,
+                          'twitch-notification.upsert'
+                        )
                           ? '儲存中…'
                           : '儲存'
                       }}
                     </button>
                     <button
                       type="button"
-                      class="btn bg-red-800 active:bg-red-700"
+                      class="btn gap-2 bg-red-800 active:bg-red-700"
                       :disabled="isFormLoading(`twitch:${item.source}`)"
                       @click="removeTwitch(item.source)"
                     >
-                      移除
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `twitch:${item.source}`,
+                            'twitch-notification.remove'
+                          )
+                        "
+                      />
+                      {{
+                        isMutationLoading(
+                          `twitch:${item.source}`,
+                          'twitch-notification.remove'
+                        )
+                          ? '移除中…'
+                          : '移除'
+                      }}
                     </button>
                   </div>
                 </form>
@@ -687,23 +770,34 @@
                         </option>
                       </select>
                     </label>
-                    <label>
-                      開播訊息
-                      <input v-model="newTwitch.startMessage" class="field" />
-                    </label>
-                    <label>
-                      結束訊息
-                      <input v-model="newTwitch.endMessage" class="field" />
-                    </label>
-                    <label>
-                      變更訊息
-                      <input v-model="newTwitch.changeMessage" class="field" />
-                    </label>
+                    <RoleMentionField
+                      v-model="newTwitch.startMessage"
+                      label="開播訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="newTwitch.endMessage"
+                      label="結束訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="newTwitch.changeMessage"
+                      label="變更訊息"
+                      :roles="mentionRoles"
+                    />
                   </div>
                   <button
-                    class="btn mt-3 bg-indigo-600 active:bg-indigo-500"
+                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
                     :disabled="isFormLoading('twitch:new')"
                   >
+                    <LoadingSpinner
+                      v-if="
+                        isMutationLoading(
+                          'twitch:new',
+                          'twitch-notification.upsert'
+                        )
+                      "
+                    />
                     {{ isFormLoading('twitch:new') ? '新增中…' : '新增通知' }}
                   </button>
                 </form>
@@ -742,38 +836,71 @@
                         </option>
                       </select>
                     </label>
-                    <label class="wide">
-                      開播訊息
-                      <textarea
-                        v-model="item.startMessage"
-                        class="field min-h-24"
-                      ></textarea>
-                    </label>
+                    <RoleMentionField
+                      v-model="item.startMessage"
+                      class="wide"
+                      label="開播訊息"
+                      :roles="mentionRoles"
+                      multiline
+                    />
                   </div>
                   <p
                     v-if="item.detectionEnabled === false"
                     class="mt-3 text-sm text-amber-300"
                   >
                     設定已儲存，但目前未啟用偵測，因此不會傳送通知
+                    <button
+                      type="button"
+                      class="ml-2 font-medium underline underline-offset-2"
+                      @click="openCrawler('twitcasting', item.source)"
+                    >
+                      前往新增 TwitCasting 爬蟲
+                    </button>
                   </p>
                   <div class="mt-3 flex flex-wrap gap-3">
                     <button
-                      class="btn bg-indigo-600 active:bg-indigo-500"
+                      class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
                       :disabled="isFormLoading(`twitcasting:${item.source}`)"
                     >
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `twitcasting:${item.source}`,
+                            'twitcasting-notification.upsert'
+                          )
+                        "
+                      />
                       {{
-                        isFormLoading(`twitcasting:${item.source}`)
+                        isMutationLoading(
+                          `twitcasting:${item.source}`,
+                          'twitcasting-notification.upsert'
+                        )
                           ? '儲存中…'
                           : '儲存'
                       }}
                     </button>
                     <button
                       type="button"
-                      class="btn bg-red-800 active:bg-red-700"
+                      class="btn gap-2 bg-red-800 active:bg-red-700"
                       :disabled="isFormLoading(`twitcasting:${item.source}`)"
                       @click="removeTwitCasting(item.source)"
                     >
-                      移除
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `twitcasting:${item.source}`,
+                            'twitcasting-notification.remove'
+                          )
+                        "
+                      />
+                      {{
+                        isMutationLoading(
+                          `twitcasting:${item.source}`,
+                          'twitcasting-notification.remove'
+                        )
+                          ? '移除中…'
+                          : '移除'
+                      }}
                     </button>
                   </div>
                 </form>
@@ -809,18 +936,26 @@
                         </option>
                       </select>
                     </label>
-                    <label class="wide">
-                      開播訊息
-                      <textarea
-                        v-model="newTwitCasting.startMessage"
-                        class="field min-h-24"
-                      ></textarea>
-                    </label>
+                    <RoleMentionField
+                      v-model="newTwitCasting.startMessage"
+                      class="wide"
+                      label="開播訊息"
+                      :roles="mentionRoles"
+                      multiline
+                    />
                   </div>
                   <button
-                    class="btn mt-3 bg-indigo-600 active:bg-indigo-500"
+                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
                     :disabled="isFormLoading('twitcasting:new')"
                   >
+                    <LoadingSpinner
+                      v-if="
+                        isMutationLoading(
+                          'twitcasting:new',
+                          'twitcasting-notification.upsert'
+                        )
+                      "
+                    />
                     {{
                       isFormLoading('twitcasting:new') ? '新增中…' : '新增通知'
                     }}
@@ -853,7 +988,7 @@
                   </div>
                   <button
                     type="button"
-                    class="btn bg-red-800 active:bg-red-700"
+                    class="btn gap-2 bg-red-800 active:bg-red-700"
                     :disabled="
                       isFormLoading(
                         `crawler:${activePlatform}:${item.sourceId}`
@@ -861,7 +996,22 @@
                     "
                     @click="removeCrawler(item.sourceId)"
                   >
-                    移除
+                    <LoadingSpinner
+                      v-if="
+                        isMutationLoading(
+                          `crawler:${activePlatform}:${item.sourceId}`,
+                          `${activePlatform}-crawler.remove`
+                        )
+                      "
+                    />
+                    {{
+                      isMutationLoading(
+                        `crawler:${activePlatform}:${item.sourceId}`,
+                        `${activePlatform}-crawler.remove`
+                      )
+                        ? '移除中…'
+                        : '移除'
+                    }}
                   </button>
                 </div>
                 <p v-if="activeCrawler.items.length === 0" class="empty-note">
@@ -871,7 +1021,7 @@
                   <label>
                     頻道網址、登入名稱（login）或 ID
                     <input
-                      v-model.trim="newCrawlerSource"
+                      v-model.trim="newCrawlerSources[activePlatform]"
                       class="field"
                       required
                       autocomplete="off"
@@ -879,14 +1029,31 @@
                     />
                   </label>
                   <button
-                    class="btn mt-3 bg-indigo-600 active:bg-indigo-500"
+                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
                     :disabled="
                       !activeCrawler.enabled ||
                       activeCrawler.count >= activeCrawler.limit ||
                       isFormLoading(`crawler:${activePlatform}:new`)
                     "
                   >
-                    {{ activeCrawler.enabled ? '新增爬蟲' : '平台目前停用' }}
+                    <LoadingSpinner
+                      v-if="
+                        isMutationLoading(
+                          `crawler:${activePlatform}:new`,
+                          `${activePlatform}-crawler.add`
+                        )
+                      "
+                    />
+                    {{
+                      isMutationLoading(
+                        `crawler:${activePlatform}:new`,
+                        `${activePlatform}-crawler.add`
+                      )
+                        ? '新增中…'
+                        : activeCrawler.enabled
+                          ? '新增爬蟲'
+                          : '平台目前停用'
+                    }}
                   </button>
                 </form>
               </section>
@@ -946,7 +1113,7 @@
                       </select>
                     </label>
                     <button
-                      class="btn mt-3 bg-indigo-600 active:bg-indigo-500"
+                      class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
                       :disabled="
                         item.deletionPending ||
                         isFormLoading(
@@ -954,7 +1121,22 @@
                         )
                       "
                     >
-                      儲存
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `verification:${activePlatform}:${item.sourceId}`,
+                            `${activePlatform}-verification.upsert`
+                          )
+                        "
+                      />
+                      {{
+                        isMutationLoading(
+                          `verification:${activePlatform}:${item.sourceId}`,
+                          `${activePlatform}-verification.upsert`
+                        )
+                          ? '儲存中…'
+                          : '儲存'
+                      }}
                     </button>
                   </form>
                   <template v-if="activePlatform === 'youtube'">
@@ -976,15 +1158,53 @@
                           required
                         />
                       </label>
-                      <button class="btn mt-3 bg-zinc-700 active:bg-zinc-600">
-                        指定影片
+                      <button
+                        class="btn mt-3 gap-2 bg-zinc-700 active:bg-zinc-600"
+                        :disabled="
+                          isFormLoading(`verification:youtube:${item.sourceId}`)
+                        "
+                      >
+                        <LoadingSpinner
+                          v-if="
+                            isMutationLoading(
+                              `verification:youtube:${item.sourceId}`,
+                              'youtube-verification.set-probe-video'
+                            )
+                          "
+                        />
+                        {{
+                          isMutationLoading(
+                            `verification:youtube:${item.sourceId}`,
+                            'youtube-verification.set-probe-video'
+                          )
+                            ? '指定中…'
+                            : '指定影片'
+                        }}
                       </button>
                       <button
                         type="button"
-                        class="btn mt-3 bg-zinc-700 active:bg-zinc-600"
+                        class="btn mt-3 gap-2 bg-zinc-700 active:bg-zinc-600"
+                        :disabled="
+                          isFormLoading(`verification:youtube:${item.sourceId}`)
+                        "
                         @click="useAutomaticProbe(item.sourceId)"
                       >
-                        恢復自動探索
+                        <LoadingSpinner
+                          v-if="
+                            isMutationLoading(
+                              `verification:youtube:${item.sourceId}`,
+                              'youtube-verification.use-automatic-probe'
+                            )
+                          "
+                        />
+                        {{
+                          isMutationLoading(
+                            `verification:youtube:${item.sourceId}`,
+                            'youtube-verification.use-automatic-probe'
+                          )
+                            ? '恢復中…'
+                            : '恢復自動探索'
+                        }}
                       </button>
                     </form>
                   </template>
@@ -996,7 +1216,7 @@
                   </div>
                   <button
                     type="button"
-                    class="btn mt-3 bg-red-800 active:bg-red-700"
+                    class="btn mt-3 gap-2 bg-red-800 active:bg-red-700"
                     :disabled="
                       isFormLoading(
                         `verification:${activePlatform}:${item.sourceId}`
@@ -1004,7 +1224,22 @@
                     "
                     @click="removeVerification(item.sourceId)"
                   >
-                    移除設定
+                    <LoadingSpinner
+                      v-if="
+                        isMutationLoading(
+                          `verification:${activePlatform}:${item.sourceId}`,
+                          `${activePlatform}-verification.remove`
+                        )
+                      "
+                    />
+                    {{
+                      isMutationLoading(
+                        `verification:${activePlatform}:${item.sourceId}`,
+                        `${activePlatform}-verification.remove`
+                      )
+                        ? '移除中…'
+                        : '移除設定'
+                    }}
                   </button>
                 </div>
                 <p v-if="activeVerification.length === 0" class="empty-note">
@@ -1039,8 +1274,28 @@
                       </option>
                     </select>
                   </label>
-                  <button class="btn mt-3 bg-indigo-600 active:bg-indigo-500">
-                    新增驗證設定
+                  <button
+                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
+                    :disabled="
+                      isFormLoading(`verification:${activePlatform}:new`)
+                    "
+                  >
+                    <LoadingSpinner
+                      v-if="
+                        isMutationLoading(
+                          `verification:${activePlatform}:new`,
+                          `${activePlatform}-verification.upsert`
+                        )
+                      "
+                    />
+                    {{
+                      isMutationLoading(
+                        `verification:${activePlatform}:new`,
+                        `${activePlatform}-verification.upsert`
+                      )
+                        ? '新增中…'
+                        : '新增驗證設定'
+                    }}
                   </button>
                 </form>
               </section>
@@ -1054,6 +1309,8 @@
 
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import RoleMentionField from '../components/RoleMentionField.vue';
 import { startDiscordOAuth } from '../lib/discordOAuth';
 import {
   getAdminGuilds,
@@ -1122,6 +1379,7 @@ let settingsRequest: AbortController | null = null;
 const guildsError = ref('');
 const settingsError = ref('');
 const pendingMutations = ref(new Set<string>());
+const pendingMutationActions = ref<Record<string, AdminMutationAction>>({});
 const mutationReply = ref<AdminMutationReply | null>(null);
 const guildList = ref<HTMLElement | null>(null);
 const canScrollBackward = ref(false);
@@ -1140,7 +1398,11 @@ const commonForm = ref<CommonForm>({
 const youtubeForms = ref<YouTubeForm[]>([]);
 const twitchForms = ref<TwitchForm[]>([]);
 const twitcastingForms = ref<TwitCastingForm[]>([]);
-const newCrawlerSource = ref('');
+const newCrawlerSources = ref<Record<Platform, string>>({
+  youtube: '',
+  twitch: '',
+  twitcasting: ''
+});
 const newVerification = ref({ source: '', roleId: '' });
 const probeVideos = ref<Record<string, string>>({});
 
@@ -1184,6 +1446,7 @@ const writableChannels = computed(() =>
     (channel) => channel.canView && channel.canSendMessages
   )
 );
+const mentionRoles = computed(() => settings.value?.resources.roles || []);
 const platformLabels: Record<Platform, string> = {
   youtube: 'YouTube',
   twitch: 'Twitch',
@@ -1270,11 +1533,23 @@ const mutationKey = (formKey: string, guildId = selectedGuild.value?.id) =>
   `${guildId}:${formKey}`;
 const isFormLoading = (formKey: string): boolean =>
   pendingMutations.value.has(mutationKey(formKey));
-const setFormLoading = (guildId: string, formKey: string, loading: boolean) => {
+const isMutationLoading = (formKey: string, action: string): boolean =>
+  pendingMutationActions.value[mutationKey(formKey)] === action;
+const setFormLoading = (
+  guildId: string,
+  formKey: string,
+  loading: boolean,
+  action?: AdminMutationAction
+) => {
+  const key = mutationKey(formKey, guildId);
   const next = new Set(pendingMutations.value);
-  if (loading) next.add(mutationKey(formKey, guildId));
-  else next.delete(mutationKey(formKey, guildId));
+  if (loading) next.add(key);
+  else next.delete(key);
   pendingMutations.value = next;
+  const actions = { ...pendingMutationActions.value };
+  if (loading && action) actions[key] = action;
+  else delete actions[key];
+  pendingMutationActions.value = actions;
 };
 const inviteUrl = computed(() => {
   const guildId = selectedGuild.value?.id || '';
@@ -1415,7 +1690,7 @@ const useSnapshot = (snapshot: GuildSettingsSnapshot) => {
   newYouTube.value = emptyYouTube();
   newTwitch.value = emptyTwitch();
   newTwitCasting.value = emptyTwitCasting();
-  newCrawlerSource.value = '';
+  newCrawlerSources.value = { youtube: '', twitch: '', twitcasting: '' };
   newVerification.value = { source: '', roleId: '' };
   probeVideos.value = {};
 };
@@ -1504,7 +1779,7 @@ const runMutation = async (
     selectionVersion === guildSelectionVersion &&
     selectedGuild.value?.id === guild.id;
 
-  setFormLoading(guild.id, formKey, true);
+  setFormLoading(guild.id, formKey, true, action);
   mutationReply.value = null;
   try {
     const reply = await mutateGuildSettings(
@@ -1575,14 +1850,23 @@ const reloadAfterMutation = async (reply: AdminMutationReply | null) => {
     await loadSettings();
 };
 
+const openCrawler = (platform: Platform, source: string) => {
+  activePlatform.value = platform;
+  activeFeature.value = 'crawler';
+  newCrawlerSources.value[platform] = source;
+};
+
 const addCrawler = async () => {
   const platform = activePlatform.value;
   const key = `crawler:${platform}:new`;
+  const source = newCrawlerSources.value[platform];
   const reply = await runMutation(
     key,
     `${platform}-crawler.add` as AdminMutationAction,
-    { source: newCrawlerSource.value }
+    { source }
   );
+  if (reply?.state === 'applied' || reply?.state === 'pending')
+    newCrawlerSources.value[platform] = '';
   await reloadAfterMutation(reply);
 };
 
@@ -2034,7 +2318,7 @@ onBeforeUnmount(() => {
 @reference '../index.css';
 
 .settings-page {
-  @apply min-h-[calc(100vh-7rem)] bg-neutral-900;
+  @apply min-h-[calc(100vh-7rem)] bg-neutral-900 lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:overflow-hidden;
 }
 
 .settings-page > .mb-6,
@@ -2044,11 +2328,11 @@ onBeforeUnmount(() => {
 }
 
 .settings-layout {
-  @apply grid min-h-[calc(100vh-7rem)] content-start grid-cols-[minmax(0,1fr)] lg:grid-cols-[280px_minmax(0,1fr)];
+  @apply grid min-h-[calc(100vh-7rem)] content-start grid-cols-[minmax(0,1fr)] lg:h-full lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)];
 }
 
 .settings-sidebar {
-  @apply min-w-0 border-b border-zinc-700 bg-neutral-800 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden lg:border-r lg:border-b-0;
+  @apply min-w-0 border-b border-zinc-700 bg-neutral-800 lg:h-full lg:overflow-hidden lg:border-r lg:border-b-0;
 }
 
 .sidebar-heading {
@@ -2091,11 +2375,17 @@ onBeforeUnmount(() => {
 }
 
 .settings-content {
-  @apply min-w-0 p-4 lg:p-6;
+  @apply min-w-0 p-4 lg:h-full lg:overflow-y-auto lg:p-6;
+
+  scrollbar-width: none;
+}
+
+.settings-content::-webkit-scrollbar {
+  display: none;
 }
 
 .settings-main-tabs {
-  @apply sticky top-14 z-40 -mx-4 flex overflow-x-auto border-y border-zinc-700 bg-neutral-800 px-4 lg:-mx-6 lg:px-6;
+  @apply -mx-4 flex overflow-x-auto border-y border-zinc-700 bg-neutral-800 px-4 lg:-mx-6 lg:px-6;
 }
 
 .settings-main-tabs button {
