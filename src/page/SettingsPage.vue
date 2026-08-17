@@ -1465,7 +1465,8 @@ const loadSettings = async () => {
     useSnapshot(snapshot);
   } catch {
     if (request.signal.aborted || settingsRequest !== request) return;
-    settingsError.value = '無法取得伺服器設定，請確認登入狀態後重試。';
+    settingsError.value =
+      '無法取得伺服器設定。你可以稍後重試，或回到 Discord 使用機器人的設定指令。';
   } finally {
     if (settingsRequest === request) {
       settingsRequest = null;
