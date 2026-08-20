@@ -124,7 +124,8 @@ export type AdminMutationAction =
   | 'twitch-verification.upsert'
   | 'twitch-verification.remove';
 
-export type AdminReplyState = 'applied' | 'pending' | 'rejected' | 'unknown';
+export type AdminReplyState =
+  'applied' | 'pending' | 'rejected' | 'timeout' | 'unknown';
 
 export interface AdminMutationReply {
   state: AdminReplyState;
@@ -136,7 +137,8 @@ export interface AdminMutationReply {
 export class AdminSettingsApiError extends Error {
   constructor(
     readonly status: number,
-    message?: string
+    message?: string,
+    readonly code?: string
   ) {
     super(message || `admin_settings_request_failed:${status}`);
     this.name = 'AdminSettingsApiError';
@@ -182,6 +184,9 @@ const getJson = async <T>(
       response.status,
       typeof body === 'object' && body !== null && 'message' in body
         ? String(body.message)
+        : undefined,
+      typeof body === 'object' && body !== null && 'code' in body
+        ? String(body.code)
         : undefined
     );
 
@@ -212,10 +217,12 @@ const responseState = (response: Response, body: unknown): AdminReplyState => {
   const value = reply.status ?? reply.state ?? reply.result;
   const state = typeof value === 'string' ? value.toLowerCase() : '';
 
+  if (response.status === 504) return 'timeout';
   if (
     state === 'applied' ||
     state === 'pending' ||
     state === 'rejected' ||
+    state === 'timeout' ||
     state === 'unknown'
   )
     return state;

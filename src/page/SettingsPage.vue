@@ -7,7 +7,7 @@
       <div>
         <h1 class="text-2xl font-bold text-white">伺服器設定</h1>
         <p class="mt-1 text-sm text-zinc-400">
-          選擇您可管理的伺服器，即可更新各項設定
+          選擇要管理的伺服器，就能更新各項設定
         </p>
       </div>
       <a href="/" data-spa-link class="text-sm text-indigo-300 underline">
@@ -34,7 +34,7 @@
         <aside class="settings-sidebar">
           <div class="sidebar-heading">
             <h1 class="text-xl font-bold text-white">伺服器設定</h1>
-            <p class="mt-1 text-xs text-zinc-400">選擇您可管理的伺服器</p>
+            <p class="mt-1 text-xs text-zinc-400">選擇要管理的伺服器</p>
             <a
               href="/"
               data-spa-link
@@ -49,11 +49,11 @@
             role="status"
             aria-live="polite"
           >
-            <p>正在取得伺服器…</p>
+            <p>正在載入伺服器…</p>
             <div
               class="loading-progress-track mt-4"
               role="progressbar"
-              aria-label="正在取得伺服器"
+              aria-label="正在載入伺服器"
             >
               <span class="loading-progress-value"></span>
             </div>
@@ -67,7 +67,7 @@
               class="btn mt-3 bg-red-700 active:bg-red-600"
               @click="loadGuilds"
             >
-              重新取得伺服器
+              重新載入伺服器
             </button>
           </div>
           <div v-else-if="guilds.length === 0" class="rounded bg-zinc-900 p-5">
@@ -118,7 +118,7 @@
                       {{ guild.name }}
                     </p>
                     <p class="text-xs text-zinc-400">
-                      {{ guild.owner ? '伺服器擁有者' : '具備管理權限' }}
+                      {{ guild.owner ? '伺服器擁有者' : '伺服器管理員' }}
                     </p>
                   </div>
                 </div>
@@ -160,9 +160,9 @@
           >
             <h2 class="text-lg font-bold">請先邀請機器人</h2>
             <p class="mt-1 text-sm">
-              將直播小幫手加入「{{
+              先將直播小幫手加入「{{
                 selectedGuild.name
-              }}」後，再重新選擇此伺服器即可設定通知
+              }}」，再重新選擇這個伺服器，即可設定通知
             </p>
             <div class="mt-4 flex flex-wrap gap-3">
               <a
@@ -193,11 +193,11 @@
               role="status"
               aria-live="polite"
             >
-              <p>正在取得「{{ selectedGuild.name }}」的設定…</p>
+              <p>正在載入「{{ selectedGuild.name }}」的設定…</p>
               <div
                 class="loading-progress-track mt-4 max-w-xl"
                 role="progressbar"
-                aria-label="正在取得伺服器設定"
+                aria-label="正在載入伺服器設定"
               >
                 <span class="loading-progress-value"></span>
               </div>
@@ -211,7 +211,7 @@
                 class="btn mt-3 bg-red-700 active:bg-red-600"
                 @click="loadSettings"
               >
-                重新取得設定
+                重新載入設定
               </button>
             </div>
 
@@ -315,7 +315,10 @@
                 >
                   <p>{{ replyText }}</p>
                   <button
-                    v-if="mutationReply.state === 'unknown'"
+                    v-if="
+                      mutationReply.state === 'unknown' ||
+                      mutationReply.state === 'timeout'
+                    "
                     class="btn mt-3 gap-2 bg-zinc-700 active:bg-zinc-600"
                     :disabled="settingsLoading"
                     @click="reloadAfterUnknown"
@@ -394,7 +397,7 @@
               >
                 <h2>YouTube 通知</h2>
                 <p class="section-help">
-                  影片通知頻道未設定時，會使用直播通知頻道
+                  沒有設定影片通知頻道時，通知會發到直播通知頻道
                 </p>
                 <form
                   v-for="item in youtubeForms"
@@ -427,7 +430,7 @@
                     <label>
                       影片通知頻道
                       <select v-model="item.videoChannelId" class="field">
-                        <option value="">未設定（使用直播通知頻道）</option>
+                        <option value="">未設定（沿用直播通知頻道）</option>
                         <option
                           v-for="channel in writableChannels"
                           :key="channel.id"
@@ -469,20 +472,20 @@
                     />
                     <label class="checkbox-label">
                       <input v-model="item.createEvent" type="checkbox" />
-                      建立 Discord 排程活動
+                      當有新直播時，自動建立 Discord 活動
                     </label>
                   </div>
                   <p
                     v-if="item.detectionEnabled === false"
                     class="mt-3 text-sm text-amber-300"
                   >
-                    設定已儲存，但目前未啟用偵測，因此不會傳送通知
+                    設定已儲存，但目前尚未建立爬蟲，通知不會送出
                     <button
                       type="button"
                       class="ml-2 font-medium underline underline-offset-2"
                       @click="openCrawler('youtube', item.source)"
                     >
-                      前往新增 YouTube 爬蟲
+                      新增 YouTube 爬蟲
                     </button>
                   </p>
                   <div class="mt-3 flex flex-wrap gap-3">
@@ -567,7 +570,7 @@
                     <label>
                       影片通知頻道
                       <select v-model="newYouTube.videoChannelId" class="field">
-                        <option value="">未設定（使用直播通知頻道）</option>
+                        <option value="">未設定（沿用直播通知頻道）</option>
                         <option
                           v-for="channel in writableChannels"
                           :key="channel.id"
@@ -609,7 +612,7 @@
                     />
                     <label class="checkbox-label">
                       <input v-model="newYouTube.createEvent" type="checkbox" />
-                      建立 Discord 排程活動
+                      當有新直播時，自動建立 Discord 活動
                     </label>
                   </div>
                   <button
@@ -682,13 +685,13 @@
                     v-if="item.detectionEnabled === false"
                     class="mt-3 text-sm text-amber-300"
                   >
-                    設定已儲存，但目前未啟用偵測，因此不會傳送通知
+                    設定已儲存，但目前尚未建立爬蟲，通知不會送出
                     <button
                       type="button"
                       class="ml-2 font-medium underline underline-offset-2"
                       @click="openCrawler('twitch', item.source)"
                     >
-                      前往新增 Twitch 爬蟲
+                      新增 Twitch 爬蟲
                     </button>
                   </p>
                   <div class="mt-3 flex flex-wrap gap-3">
@@ -848,13 +851,13 @@
                     v-if="item.detectionEnabled === false"
                     class="mt-3 text-sm text-amber-300"
                   >
-                    設定已儲存，但目前未啟用偵測，因此不會傳送通知
+                    設定已儲存，但目前尚未建立爬蟲，通知不會送出
                     <button
                       type="button"
                       class="ml-2 font-medium underline underline-offset-2"
                       @click="openCrawler('twitcasting', item.source)"
                     >
-                      前往新增 TwitCasting 爬蟲
+                      新增 TwitCasting 爬蟲
                     </button>
                   </p>
                   <div class="mt-3 flex flex-wrap gap-3">
@@ -973,8 +976,8 @@
                 <div>
                   <h2>{{ activePlatformLabel }} 爬蟲</h2>
                   <p class="section-help">
-                    已使用 {{ activeCrawler.count }} 個來源 (總共可用
-                    {{ activeCrawler.limit }} 個來源)
+                    目前使用 {{ activeCrawler.count }} 個來源（上限
+                    {{ activeCrawler.limit }} 個）
                   </p>
                 </div>
                 <div
@@ -1015,7 +1018,7 @@
                   </button>
                 </div>
                 <p v-if="activeCrawler.items.length === 0" class="empty-note">
-                  尚未新增 {{ activePlatformLabel }} 爬蟲來源
+                  目前還沒有 {{ activePlatformLabel }} 爬蟲來源
                 </p>
                 <form class="settings-grid" @submit.prevent="addCrawler">
                   <label>
@@ -1052,7 +1055,7 @@
                         ? '新增中…'
                         : activeCrawler.enabled
                           ? '新增爬蟲'
-                          : '平台目前停用'
+                          : '平台目前已停用'
                     }}
                   </button>
                 </form>
@@ -1068,7 +1071,7 @@
                 <div>
                   <h2>{{ activePlatformLabel }} {{ verificationName }}</h2>
                   <p class="section-help">
-                    設定驗證來源、Discord 身分組與驗證結果紀錄
+                    設定驗證來源、Discord 身分組和驗證紀錄
                   </p>
                 </div>
                 <div
@@ -1079,15 +1082,15 @@
                   <div>
                     <strong>{{ item.sourceName || item.sourceId }}</strong>
                     <p>
-                      已驗證 {{ item.verifiedMemberCount }} 人，另有
-                      {{ item.pendingRoleRemovalCount }} 人待移除身分組
+                      已有 {{ item.verifiedMemberCount }} 人完成驗證，還有
+                      {{ item.pendingRoleRemovalCount }} 人的身分組待移除
                     </p>
                   </div>
                   <p v-if="item.previousRoleId" class="text-amber-300">
-                    舊身分組 {{ roleName(item.previousRoleId) }} 尚在遷移中
+                    舊身分組 {{ roleName(item.previousRoleId) }} 仍在遷移中
                   </p>
                   <p v-if="item.deletionPending" class="text-amber-300">
-                    清理中，暫時不能更新
+                    正在清理，暫時無法更新
                   </p>
                   <form
                     class="settings-grid"
@@ -1108,7 +1111,7 @@
                           :disabled="!role.botCanManage"
                         >
                           {{ role.name
-                          }}{{ role.botCanManage ? '' : '（無法管理）' }}
+                          }}{{ role.botCanManage ? '' : '（小幫手無法管理）' }}
                         </option>
                       </select>
                     </label>
@@ -1203,7 +1206,7 @@
                             'youtube-verification.use-automatic-probe'
                           )
                             ? '恢復中…'
-                            : '恢復自動探索'
+                            : '改回自動探索'
                         }}
                       </button>
                     </form>
@@ -1218,6 +1221,7 @@
                     type="button"
                     class="btn mt-3 gap-2 bg-red-800 active:bg-red-700"
                     :disabled="
+                      item.deletionPending ||
                       isFormLoading(
                         `verification:${activePlatform}:${item.sourceId}`
                       )
@@ -1243,7 +1247,7 @@
                   </button>
                 </div>
                 <p v-if="activeVerification.length === 0" class="empty-note">
-                  尚未設定 {{ activePlatformLabel }} 驗證
+                  目前還沒有 {{ activePlatformLabel }} 驗證設定
                 </p>
                 <form class="settings-grid" @submit.prevent="addVerification">
                   <label>
@@ -1270,7 +1274,7 @@
                         :disabled="!role.botCanManage"
                       >
                         {{ role.name
-                        }}{{ role.botCanManage ? '' : '（無法管理）' }}
+                        }}{{ role.botCanManage ? '' : '（小幫手無法管理）' }}
                       </option>
                     </select>
                   </label>
@@ -1313,6 +1317,7 @@ import LoadingSpinner from '../components/LoadingSpinner.vue';
 import RoleMentionField from '../components/RoleMentionField.vue';
 import { startDiscordOAuth } from '../lib/discordOAuth';
 import {
+  AdminSettingsApiError,
   getAdminGuilds,
   getGuildSettings,
   mutateGuildSettings
@@ -1563,6 +1568,8 @@ const replyClass = computed(() => {
       return 'bg-amber-900/70 text-amber-100';
     case 'rejected':
       return 'bg-red-950 text-red-100';
+    case 'timeout':
+      return 'bg-orange-950 text-orange-100';
     default:
       return 'bg-zinc-700 text-zinc-100';
   }
@@ -1572,45 +1579,50 @@ const replyText = computed(() => {
   if (!reply) return '';
   if (reply.message) return reply.message;
   const codeMessages: Record<string, string> = {
-    'crawler.already-exists': '此來源已在目前伺服器中。',
+    'crawler.already-exists': '這個爬蟲已經在此伺服器中。',
     'crawler.not-configured': '找不到此爬蟲來源。',
-    'crawler.not-owned': '此來源不屬於目前伺服器。',
-    'crawler.source-owned': '此來源已由其他伺服器或 Bot 擁有者管理。',
+    'crawler.not-owned': '此爬蟲不屬於目前伺服器。',
+    'crawler.source-owned': '其他伺服器或 Bot 擁有者已設定此爬蟲。',
     'crawler.source-ineligible':
-      '平台已內建此來源的監測功能，不需要另行新增爬蟲。',
-    'crawler.limit-reached': '已達目前伺服器的爬蟲數量上限。',
-    'crawler.guild-member-requirement': '伺服器人數未達使用門檻。',
+      '這個爬蟲已有平台內建功能監測，不需要另外新增。',
+    'crawler.limit-reached':
+      '已達此伺服器的爬蟲數量上限，若有需要請聯絡 Bot 擁有者。',
+    'crawler.guild-member-requirement': '此伺服器人數未達使用門檻。',
     'crawler.oauth-eligibility-required':
-      '伺服器人數不足，請先使用目前登入的 Discord 帳號連結該 Twitch 頻道。',
-    'crawler.platform-disabled': '平台 API 目前停用，暫時無法新增。',
-    'verification.log-channel-required': '請先在一般設定選擇驗證紀錄頻道。',
+      '此伺服器人數不足，請先用目前登入的 Discord 帳號連結這個 Twitch 頻道，然後再試一次。',
+    'crawler.platform-disabled': '平台 API 目前停用，暫時無法新增爬蟲。',
+    'verification.log-channel-required': '請先到「一般設定」選擇驗證紀錄頻道。',
     'verification.log-channel-missing': '驗證紀錄頻道已不存在，請重新設定。',
     'verification.configured': '驗證設定已套用。',
     'verification.removed': '驗證設定已移除。',
-    'verification.cleanup-pending': '設定已排定移除，相關身分組仍在背景清理。',
+    'verification.cleanup-pending':
+      '設定已標記為待移除，相關身分組會在背景清理。',
     'verification.not-configured': '找不到此驗證設定。',
-    'verification.limit-reached': '已達目前伺服器的驗證頻道數量上限。',
+    'verification.limit-reached':
+      '已達此伺服器的驗證頻道數量上限，若有需要請聯絡 Bot 擁有者。',
     'verification.guild-member-requirement':
-      '伺服器人數未達驗證功能的使用門檻。',
+      '此伺服器人數未達驗證功能的使用門檻，若有需要請聯絡 Bot 擁有者。。',
     'verification.manage-roles-required': 'Bot 沒有管理身分組的權限。',
-    'verification.role-invalid': '所選身分組無法使用。',
-    'verification.role-too-high': '所選身分組高於 Bot 可管理的位置。',
-    'verification.role-collision': '此身分組已由另一個驗證平台使用。',
-    'verification.deletion-pending': '設定正在清理中，暫時不能更新。',
-    'verification.source-not-found': '找不到此平台頻道，請確認網址或 ID。',
+    'verification.role-invalid': '無法使用所選的身分組。',
+    'verification.role-too-high': '所選身分組的位置高於 Bot 可管理的最高位置。',
+    'verification.role-collision': '這個身分組已被另一個驗證平台使用。',
+    'verification.deletion-pending': '設定正在清理，暫時無法更新。',
+    'verification.source-not-found':
+      '找不到這個平台頻道，請確認網址或 ID 是否正確。',
     'verification.source-ineligible':
-      '此 Twitch 頻道不是 Affiliate 或 Partner，無法使用訂閱驗證。',
+      '此 Twitch 頻道不是實況盟友或合作夥伴，無法使用訂閱驗證。',
     'verification.probe-video-set': '已改用手動探測影片。',
-    'verification.probe-automatic': '已恢復自動尋找驗證影片。',
+    'verification.probe-automatic': '已改回自動尋找驗證影片。',
     'verification.probe-video-invalid':
       '影片不存在、留言已停用，或不是可用的會員限定影片。',
-    'verification.platform-disabled': '驗證平台目前停用。'
+    'verification.platform-disabled': '驗證平台目前已停用。'
   };
   if (reply.code && codeMessages[reply.code]) return codeMessages[reply.code];
   return {
     applied: '設定已套用。',
-    pending: '設定正在處理，完成後可重新載入確認。',
-    rejected: '伺服器拒絕此設定，請確認內容與權限。',
+    pending: '設定正在處理，完成後請重新載入確認。',
+    rejected: '伺服器拒絕了這項設定，請確認內容和權限。',
+    timeout: '設定請求逾時，請重新載入設定後再繼續操作。',
     unknown: '無法確認設定是否已套用。請重新載入設定後再繼續操作。'
   }[reply.state];
 });
@@ -1708,7 +1720,7 @@ const loadGuilds = async () => {
     guilds.value = await getAdminGuilds(apiURL, token);
     requestAnimationFrame(updateGuildScrollHints);
   } catch {
-    guildsError.value = '無法取得可管理的伺服器，請重新登入或稍後再試。';
+    guildsError.value = '無法載入可管理的伺服器，請重新登入或稍後再試。';
   } finally {
     guildsLoading.value = false;
   }
@@ -1738,10 +1750,13 @@ const loadSettings = async () => {
     )
       return;
     useSnapshot(snapshot);
-  } catch {
+  } catch (error) {
     if (request.signal.aborted || settingsRequest !== request) return;
     settingsError.value =
-      '無法取得伺服器設定。你可以稍後重試，或回到 Discord 使用機器人的設定指令。';
+      error instanceof AdminSettingsApiError &&
+      (error.status === 504 || error.code === 'settings.timeout')
+        ? '載入伺服器設定逾時，請重新載入設定後再繼續操作。'
+        : '無法載入伺服器設定。請稍後再試，或回到 Discord 使用機器人的設定指令。';
   } finally {
     if (settingsRequest === request) {
       settingsRequest = null;
@@ -1792,9 +1807,15 @@ const runMutation = async (
     if (!isCurrentGuild()) return null;
     mutationReply.value = reply;
     return reply;
-  } catch {
+  } catch (error) {
     if (!isCurrentGuild()) return null;
-    mutationReply.value = { state: 'unknown' };
+    mutationReply.value = {
+      state:
+        error instanceof AdminSettingsApiError &&
+        (error.status === 504 || error.code === 'settings.timeout')
+          ? 'timeout'
+          : 'unknown'
+    };
     return mutationReply.value;
   } finally {
     if (!keepLoading) setFormLoading(guild.id, formKey, false);
@@ -1829,7 +1850,7 @@ const saveGeneral = async () => {
     ]);
 
   if (changes.length === 0) {
-    mutationReply.value = { state: 'applied', message: '設定沒有變更。' };
+    mutationReply.value = { state: 'applied', message: '設定未變更。' };
     return;
   }
 
@@ -1911,6 +1932,13 @@ const removeVerification = async (sourceId: string) => {
     `${platform}-verification.remove` as AdminMutationAction,
     { sourceId }
   );
+  if (reply?.state === 'pending' && settings.value) {
+    const item = settings.value.verification[platform].find(
+      (entry) => entry.sourceId === sourceId
+    );
+    if (item) item.deletionPending = true;
+    return;
+  }
   await reloadAfterMutation(reply);
 };
 
@@ -2291,7 +2319,7 @@ const finishGuildDrag = () => stopGuildDrag();
 
 watch(mutationReply, (reply) => {
   clearTimeout(toastTimer);
-  if (reply && reply.state !== 'unknown')
+  if (reply && reply.state !== 'unknown' && reply.state !== 'timeout')
     toastTimer = setTimeout(() => (mutationReply.value = null), 4000);
 });
 watch(availablePlatforms, (platforms) => {

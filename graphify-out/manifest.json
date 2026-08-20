@@ -85,8 +85,8 @@
     "semantic_hash": ""
   },
   "src/lib/adminSettings.ts": {
-    "mtime": 1786619481.605231,
-    "ast_hash": "6031d4517c70c1a3ba6090a80064a115",
+    "mtime": 1787137445.716264,
+    "ast_hash": "c16af0d742153157ea05fff3b7a23184",
     "semantic_hash": ""
   },
   "src/lib/discordOAuth.ts": {
@@ -120,8 +120,8 @@
     "semantic_hash": ""
   },
   "src/page/SettingsPage.vue": {
-    "mtime": 1786959447.0031648,
-    "ast_hash": "62787f4a74bd274637bf329d10f93011",
+    "mtime": 1787196797.1605637,
+    "ast_hash": "6af26b51af65bc895ae5f24928449dbc",
     "semantic_hash": ""
   },
   "src/page/TermsPage.vue": {

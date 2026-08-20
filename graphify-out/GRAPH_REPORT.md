@@ -1,16 +1,16 @@
-# Graph Report - auto-discord-ytmember-checker  (2026-08-17)
+# Graph Report - auto-discord-ytmember-checker  (2026-08-20)
 
 ## Corpus Check
-- 35 files · ~36,925 words
+- 35 files · ~37,033 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 371 nodes · 494 edges · 53 communities (27 shown, 26 thin omitted)
+- 371 nodes · 495 edges · 53 communities (27 shown, 26 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 5 edges (avg confidence: 0.68)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `563cc4b0`
+- Built from commit: `df9ab590`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
