@@ -73,8 +73,18 @@ export interface GuildSettingsSnapshot {
       startMessage?: string;
       detectionEnabled?: boolean;
     }>;
+    chzzk: Array<{
+      sourceId: string;
+      sourceName?: string;
+      channelId: string;
+      messages?: Record<string, string>;
+      detectionEnabled?: boolean;
+    }>;
   };
-  crawlers: Record<'youtube' | 'twitch' | 'twitcasting', AdminCrawlerPlatform>;
+  crawlers: Record<
+    'youtube' | 'twitch' | 'twitcasting' | 'chzzk',
+    AdminCrawlerPlatform
+  >;
   verification: {
     youtube: Array<{
       sourceId: string;
@@ -111,12 +121,16 @@ export type AdminMutationAction =
   | 'twitch-notification.remove'
   | 'twitcasting-notification.upsert'
   | 'twitcasting-notification.remove'
+  | 'chzzk-notification.upsert'
+  | 'chzzk-notification.remove'
   | 'youtube-crawler.add'
   | 'youtube-crawler.remove'
   | 'twitch-crawler.add'
   | 'twitch-crawler.remove'
   | 'twitcasting-crawler.add'
   | 'twitcasting-crawler.remove'
+  | 'chzzk-crawler.add'
+  | 'chzzk-crawler.remove'
   | 'youtube-verification.upsert'
   | 'youtube-verification.remove'
   | 'youtube-verification.set-probe-video'

@@ -51,5 +51,6 @@
   "49": "tailwind.config.js",
   "50": "vite.config.ts",
   "51": "RoleMentionField.vue",
-  "52": "loadSettings"
+  "52": "handleUnauthorized",
+  "53": "availablePlatforms"
 }

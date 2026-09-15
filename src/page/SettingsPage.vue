@@ -968,6 +968,166 @@
 
               <section
                 v-if="
+                  activeFeature === 'notification' &&
+                  activePlatform === 'chzzk' &&
+                  hasCapability('chzzk-notification')
+                "
+                class="settings-section"
+              >
+                <h2>CHZZK 通知</h2>
+                <form
+                  v-for="item in chzzkForms"
+                  :key="item.source"
+                  class="notification-form"
+                  @submit.prevent="saveChzzk(item)"
+                >
+                  <div class="settings-grid">
+                    <label>
+                      CHZZK 頻道
+                      <input :value="item.sourceName" class="field" readonly />
+                    </label>
+                    <label>
+                      通知頻道
+                      <select v-model="item.channelId" class="field" required>
+                        <option value="" disabled>請選擇頻道</option>
+                        <option
+                          v-for="channel in writableChannels"
+                          :key="channel.id"
+                          :value="channel.id"
+                        >
+                          # {{ channel.name }}
+                        </option>
+                      </select>
+                    </label>
+                    <RoleMentionField
+                      v-model="item.startMessage"
+                      label="開播訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="item.endMessage"
+                      label="結束訊息"
+                      :roles="mentionRoles"
+                    />
+                  </div>
+                  <p
+                    v-if="item.detectionEnabled === false"
+                    class="mt-3 text-sm text-amber-300"
+                  >
+                    設定已儲存，但目前尚未建立爬蟲，通知不會送出
+                    <button
+                      type="button"
+                      class="ml-2 font-medium underline underline-offset-2"
+                      @click="openCrawler('chzzk', item.source)"
+                    >
+                      新增 CHZZK 爬蟲
+                    </button>
+                  </p>
+                  <div class="mt-3 flex flex-wrap gap-3">
+                    <button
+                      class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
+                      :disabled="isFormLoading(`chzzk:${item.source}`)"
+                    >
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `chzzk:${item.source}`,
+                            'chzzk-notification.upsert'
+                          )
+                        "
+                      />
+                      {{
+                        isMutationLoading(
+                          `chzzk:${item.source}`,
+                          'chzzk-notification.upsert'
+                        )
+                          ? '儲存中…'
+                          : '儲存'
+                      }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn gap-2 bg-red-800 active:bg-red-700"
+                      :disabled="isFormLoading(`chzzk:${item.source}`)"
+                      @click="removeChzzk(item.source)"
+                    >
+                      <LoadingSpinner
+                        v-if="
+                          isMutationLoading(
+                            `chzzk:${item.source}`,
+                            'chzzk-notification.remove'
+                          )
+                        "
+                      />
+                      {{
+                        isMutationLoading(
+                          `chzzk:${item.source}`,
+                          'chzzk-notification.remove'
+                        )
+                          ? '移除中…'
+                          : '移除'
+                      }}
+                    </button>
+                  </div>
+                </form>
+                <form
+                  class="notification-form"
+                  @submit.prevent="saveChzzk(newChzzk)"
+                >
+                  <h3>新增 CHZZK 通知</h3>
+                  <div class="settings-grid">
+                    <label>
+                      來源 ID 或頻道網址
+                      <input
+                        v-model.trim="newChzzk.source"
+                        class="field"
+                        required
+                        autocomplete="off"
+                      />
+                    </label>
+                    <label>
+                      通知頻道
+                      <select v-model="newChzzk.channelId" class="field" required>
+                        <option value="" disabled>請選擇頻道</option>
+                        <option
+                          v-for="channel in writableChannels"
+                          :key="channel.id"
+                          :value="channel.id"
+                        >
+                          # {{ channel.name }}
+                        </option>
+                      </select>
+                    </label>
+                    <RoleMentionField
+                      v-model="newChzzk.startMessage"
+                      label="開播訊息"
+                      :roles="mentionRoles"
+                    />
+                    <RoleMentionField
+                      v-model="newChzzk.endMessage"
+                      label="結束訊息"
+                      :roles="mentionRoles"
+                    />
+                  </div>
+                  <button
+                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
+                    :disabled="isFormLoading('chzzk:new')"
+                  >
+                    <LoadingSpinner
+                      v-if="
+                        isMutationLoading(
+                          'chzzk:new',
+                          'chzzk-notification.upsert'
+                        )
+                      "
+                    />
+                    {{ isFormLoading('chzzk:new') ? '新增中…' : '新增通知' }}
+                  </button>
+                </form>
+              </section>
+
+              <section
+                v-if="
                   activeFeature === 'crawler' &&
                   hasCapability(`${activePlatform}-crawler`)
                 "
@@ -1363,8 +1523,17 @@ interface TwitCastingForm {
   detectionEnabled?: boolean;
 }
 
+interface ChzzkForm {
+  source: string;
+  sourceName: string;
+  channelId: string;
+  startMessage: string;
+  endMessage: string;
+  detectionEnabled?: boolean;
+}
+
 type Feature = 'general' | 'notification' | 'crawler' | 'verification';
-type Platform = 'youtube' | 'twitch' | 'twitcasting';
+type Platform = 'youtube' | 'twitch' | 'twitcasting' | 'chzzk';
 
 const apiURL = inject<string>('apiURL');
 if (!apiURL) throw new Error('缺少 API 網址設定');
@@ -1403,10 +1572,12 @@ const commonForm = ref<CommonForm>({
 const youtubeForms = ref<YouTubeForm[]>([]);
 const twitchForms = ref<TwitchForm[]>([]);
 const twitcastingForms = ref<TwitCastingForm[]>([]);
+const chzzkForms = ref<ChzzkForm[]>([]);
 const newCrawlerSources = ref<Record<Platform, string>>({
   youtube: '',
   twitch: '',
-  twitcasting: ''
+  twitcasting: '',
+  chzzk: ''
 });
 const newVerification = ref({ source: '', roleId: '' });
 const probeVideos = ref<Record<string, string>>({});
@@ -1442,9 +1613,17 @@ const emptyTwitCasting = (): TwitCastingForm => ({
   channelId: '',
   startMessage: ''
 });
+const emptyChzzk = (): ChzzkForm => ({
+  source: '',
+  sourceName: '',
+  channelId: '',
+  startMessage: '',
+  endMessage: ''
+});
 const newYouTube = ref(emptyYouTube());
 const newTwitch = ref(emptyTwitch());
 const newTwitCasting = ref(emptyTwitCasting());
+const newChzzk = ref(emptyChzzk());
 
 const writableChannels = computed(() =>
   (settings.value?.resources.channels || []).filter(
@@ -1455,11 +1634,12 @@ const mentionRoles = computed(() => settings.value?.resources.roles || []);
 const platformLabels: Record<Platform, string> = {
   youtube: 'YouTube',
   twitch: 'Twitch',
-  twitcasting: 'TwitCasting'
+  twitcasting: 'TwitCasting',
+  chzzk: 'CHZZK'
 };
 const platformsByFeature: Record<Exclude<Feature, 'general'>, Platform[]> = {
-  notification: ['youtube', 'twitch', 'twitcasting'],
-  crawler: ['youtube', 'twitch', 'twitcasting'],
+  notification: ['youtube', 'twitch', 'twitcasting', 'chzzk'],
+  crawler: ['youtube', 'twitch', 'twitcasting', 'chzzk'],
   verification: ['youtube', 'twitch']
 };
 const availablePlatforms = computed(() => {
@@ -1579,6 +1759,11 @@ const replyText = computed(() => {
   if (!reply) return '';
   if (reply.message) return reply.message;
   const codeMessages: Record<string, string> = {
+    'settings.source-not-found':
+      '找不到這個平台頻道，請確認網址或 ID 是否正確。',
+    'settings.invalid-source': '來源格式不正確，請輸入頻道 ID 或頻道網址。',
+    'crawler.source-not-found':
+      '找不到這個平台頻道，請確認網址或 ID 是否正確。',
     'crawler.already-exists': '這個爬蟲已經在此伺服器中。',
     'crawler.not-configured': '找不到此爬蟲來源。',
     'crawler.not-owned': '此爬蟲不屬於目前伺服器。',
@@ -1651,12 +1836,14 @@ const normalizeSnapshot = (
   notifications: {
     youtube: snapshot.notifications?.youtube || [],
     twitch: snapshot.notifications?.twitch || [],
-    twitcasting: snapshot.notifications?.twitcasting || []
+    twitcasting: snapshot.notifications?.twitcasting || [],
+    chzzk: snapshot.notifications?.chzzk || []
   },
   crawlers: {
     youtube: snapshot.crawlers?.youtube || emptyCrawler(),
     twitch: snapshot.crawlers?.twitch || emptyCrawler(),
-    twitcasting: snapshot.crawlers?.twitcasting || emptyCrawler()
+    twitcasting: snapshot.crawlers?.twitcasting || emptyCrawler(),
+    chzzk: snapshot.crawlers?.chzzk || emptyCrawler()
   },
   verification: {
     youtube: snapshot.verification?.youtube || [],
@@ -1699,10 +1886,24 @@ const useSnapshot = (snapshot: GuildSettingsSnapshot) => {
       detectionEnabled: item.detectionEnabled
     })
   );
+  chzzkForms.value = settings.value.notifications.chzzk.map((item) => ({
+    source: item.sourceId,
+    sourceName: item.sourceName || item.sourceId,
+    channelId: item.channelId,
+    startMessage: item.messages?.start || '',
+    endMessage: item.messages?.end || '',
+    detectionEnabled: item.detectionEnabled
+  }));
   newYouTube.value = emptyYouTube();
   newTwitch.value = emptyTwitch();
   newTwitCasting.value = emptyTwitCasting();
-  newCrawlerSources.value = { youtube: '', twitch: '', twitcasting: '' };
+  newChzzk.value = emptyChzzk();
+  newCrawlerSources.value = {
+    youtube: '',
+    twitch: '',
+    twitcasting: '',
+    chzzk: ''
+  };
   newVerification.value = { source: '', roleId: '' };
   probeVideos.value = {};
 };
@@ -1961,10 +2162,10 @@ const useAutomaticProbe = async (sourceId: string) => {
 };
 
 const refreshAddedNotification = async (
-  platform: 'youtube' | 'twitch' | 'twitcasting',
+  platform: 'youtube' | 'twitch' | 'twitcasting' | 'chzzk',
   source: string,
   selectionVersion: number,
-  submitted: YouTubeForm | TwitchForm | TwitCastingForm
+  submitted: YouTubeForm | TwitchForm | TwitCastingForm | ChzzkForm
 ) => {
   const token = discordToken();
   const guild = selectedGuild.value;
@@ -2030,7 +2231,7 @@ const refreshAddedNotification = async (
       }
       if (JSON.stringify(newTwitch.value) === JSON.stringify(submitted))
         newTwitch.value = emptyTwitch();
-    } else {
+    } else if (platform === 'twitcasting') {
       const item =
         notification as GuildSettingsSnapshot['notifications']['twitcasting'][number];
       twitcastingForms.value = twitcastingForms.value.filter(
@@ -2052,6 +2253,29 @@ const refreshAddedNotification = async (
       }
       if (JSON.stringify(newTwitCasting.value) === JSON.stringify(submitted))
         newTwitCasting.value = emptyTwitCasting();
+    } else {
+      const item =
+        notification as GuildSettingsSnapshot['notifications']['chzzk'][number];
+      chzzkForms.value = chzzkForms.value.filter(
+        (entry) => entry.source !== source
+      );
+      chzzkForms.value.push({
+        source: item.sourceId,
+        sourceName: item.sourceName || item.sourceId,
+        channelId: item.channelId,
+        startMessage: item.messages?.start || '',
+        endMessage: item.messages?.end || '',
+        detectionEnabled: item.detectionEnabled
+      });
+      if (settings.value) {
+        settings.value.notifications.chzzk =
+          settings.value.notifications.chzzk.filter(
+            (entry) => entry.sourceId !== source
+          );
+        settings.value.notifications.chzzk.push(item);
+      }
+      if (JSON.stringify(newChzzk.value) === JSON.stringify(submitted))
+        newChzzk.value = emptyChzzk();
     }
   } catch {
     if (
@@ -2241,6 +2465,62 @@ const removeTwitCasting = async (source: string) => {
       settings.value.notifications.twitcasting.filter(
         (item) => item.sourceId !== source
       );
+};
+const chzzkMessages = (item: ChzzkForm): Record<string, string> => ({
+  start: item.startMessage,
+  end: item.endMessage
+});
+const saveChzzk = async (item: ChzzkForm) => {
+  const isNew = item === newChzzk.value;
+  const formKey = isNew ? 'chzzk:new' : `chzzk:${item.source}`;
+  const guildId = selectedGuild.value?.id;
+  const submitted = { ...item };
+  const selectionVersion = guildSelectionVersion;
+  const reply = await runMutation(
+    formKey,
+    'chzzk-notification.upsert',
+    {
+      source: item.source,
+      channelId: item.channelId,
+      messages: chzzkMessages(item)
+    },
+    isNew
+  );
+  if (reply?.state !== 'applied') {
+    if (isNew && guildId) setFormLoading(guildId, formKey, false);
+    return;
+  }
+  if (isNew) {
+    await refreshAddedNotification(
+      'chzzk',
+      String(reply.arguments?.sourceId || submitted.source),
+      selectionVersion,
+      submitted
+    );
+    if (guildId) setFormLoading(guildId, formKey, false);
+    return;
+  }
+  const stored = settings.value?.notifications.chzzk.find(
+    (entry) => entry.sourceId === submitted.source
+  );
+  if (stored)
+    Object.assign(stored, {
+      channelId: submitted.channelId,
+      messages: chzzkMessages(submitted)
+    });
+};
+const removeChzzk = async (source: string) => {
+  const reply = await runMutation(
+    `chzzk:${source}`,
+    'chzzk-notification.remove',
+    { source }
+  );
+  if (reply?.state !== 'applied') return;
+  chzzkForms.value = chzzkForms.value.filter((item) => item.source !== source);
+  if (settings.value)
+    settings.value.notifications.chzzk = settings.value.notifications.chzzk.filter(
+      (item) => item.sourceId !== source
+    );
 };
 const reloadAfterUnknown = async () => {
   await loadSettings();
