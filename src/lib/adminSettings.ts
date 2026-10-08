@@ -35,6 +35,7 @@ export interface AdminCrawlerPlatform {
   enabled: boolean;
   count: number;
   limit: number;
+  unlimited?: boolean;
   items: AdminCrawlerItem[];
 }
 

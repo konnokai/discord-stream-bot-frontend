@@ -1136,8 +1136,11 @@
                 <div>
                   <h2>{{ activePlatformLabel }} 爬蟲</h2>
                   <p class="section-help">
-                    目前使用 {{ activeCrawler.count }} 個來源（上限
-                    {{ activeCrawler.limit }} 個）
+                    目前使用 {{ activeCrawler.count }} 個來源（{{
+                      activeCrawler.unlimited
+                        ? '不限數量'
+                        : `上限 ${activeCrawler.limit} 個`
+                    }}）
                   </p>
                 </div>
                 <div
@@ -1195,7 +1198,8 @@
                     class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
                     :disabled="
                       !activeCrawler.enabled ||
-                      activeCrawler.count >= activeCrawler.limit ||
+                      (!activeCrawler.unlimited &&
+                        activeCrawler.count >= activeCrawler.limit) ||
                       isFormLoading(`crawler:${activePlatform}:new`)
                     "
                   >
@@ -1667,7 +1671,13 @@ const activePlatformLabel = computed(
 const verificationName = computed(() =>
   activePlatform.value === 'twitch' ? '訂閱驗證' : '會員驗證'
 );
-const emptyCrawler = () => ({ enabled: false, count: 0, limit: 0, items: [] });
+const emptyCrawler = () => ({
+  enabled: false,
+  count: 0,
+  limit: 0,
+  unlimited: false,
+  items: []
+});
 const activeCrawler = computed(
   () => settings.value?.crawlers[activePlatform.value] || emptyCrawler()
 );
