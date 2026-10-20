@@ -8,6 +8,7 @@
       :value="modelValue"
       class="field"
       :class="{ 'min-h-24': multiline }"
+      :style="{ anchorName }"
       autocomplete="off"
       role="combobox"
       :aria-label="label"
@@ -20,7 +21,13 @@
       @keydown="handleKeydown"
       @blur="closeMenu"
     ></component>
-    <div v-if="menuOpen" :id="listboxId" class="role-menu" role="listbox">
+    <div
+      v-if="menuOpen"
+      :id="listboxId"
+      class="role-menu"
+      :style="{ positionAnchor: anchorName }"
+      role="listbox"
+    >
       <button
         v-for="(role, index) in filteredRoles"
         :id="`${listboxId}-${index}`"
@@ -35,7 +42,10 @@
         @click="selectRole(role)"
       >
         <span class="truncate">@{{ role.name }}</span>
-        <span class="shrink-0 text-xs text-zinc-500">{{ role.id }}</span>
+        <!-- 手機版寬度不夠，ID 會擠掉身分組名稱 -->
+        <span class="hidden shrink-0 text-xs text-zinc-500 md:inline">
+          {{ role.id }}
+        </span>
       </button>
       <p v-if="filteredRoles.length === 0" class="px-3 py-2 text-zinc-400">
         找不到身分組
@@ -62,6 +72,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 const id = useId();
 const fieldId = `role-mention-${id}`;
 const listboxId = `${fieldId}-listbox`;
+const anchorName = `--${fieldId}`;
 const field = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 const menuOpen = ref(false);
 const query = ref('');
@@ -83,9 +94,7 @@ const activeOptionId = computed(() =>
 );
 
 const updateMenu = (value: string, caret: number) => {
-  const match = value
-    .slice(0, caret)
-    .match(/(?:^|\s)@([^@<>\n]*)$/);
+  const match = value.slice(0, caret).match(/(?:^|\s)@([^@<>\n]*)$/);
   if (!match) {
     closeMenu();
     return;
@@ -156,8 +165,14 @@ const handleKeydown = (event: KeyboardEvent) => {
   @apply focus:border-indigo-400 focus:outline-2 focus:outline-offset-2 focus:outline-indigo-300;
 }
 
+/* 用 fixed + anchor 跳出 modal 內容區的 overflow 裁切，跟 Discord 一樣讓選單超出 modal；下方放不下就往上翻 */
 .role-menu {
-  @apply absolute top-full left-0 z-50 mt-1 max-h-56 w-full min-w-64 overflow-y-auto rounded border border-zinc-600 bg-neutral-800 py-1 text-sm shadow-lg;
+  @apply fixed z-50 mt-1 max-h-56 min-w-64 overflow-y-auto rounded border border-zinc-600 bg-neutral-800 py-1 text-sm shadow-lg;
+
+  top: anchor(bottom);
+  left: anchor(left);
+  width: anchor-size(width);
+  position-try-fallbacks: flip-block;
 }
 
 .role-option {

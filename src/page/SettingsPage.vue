@@ -1,67 +1,134 @@
 <template>
-  <section class="settings-page">
-    <div
-      v-if="!hasDiscordToken"
-      class="mb-6 flex flex-wrap items-end justify-between gap-3"
-    >
-      <div>
-        <h1 class="text-2xl font-bold text-white">伺服器設定</h1>
-        <p class="mt-1 text-sm text-zinc-400">
-          選擇要管理的伺服器，就能更新各項設定
-        </p>
+  <div class="settings-page">
+    <div v-if="!hasDiscordToken" class="login-gate">
+      <h1 class="text-2xl font-bold text-white">伺服器設定</h1>
+      <p class="mt-1 text-sm text-zinc-400">
+        選擇要管理的伺服器，就能更新各項設定
+      </p>
+      <div class="mt-6 rounded bg-amber-900/70 p-4 text-amber-100">
+        <p>請先登入 Discord，才能查看可管理的伺服器。</p>
+        <a
+          href="/"
+          class="mt-3 inline-block underline"
+          @click.prevent="openDiscord"
+        >
+          前往 Discord 登入
+        </a>
       </div>
-      <a href="/" data-spa-link class="text-sm text-indigo-300 underline">
+      <a
+        href="/"
+        data-spa-link
+        class="mt-6 inline-block text-sm text-indigo-300 underline"
+      >
         返回帳號連結
       </a>
     </div>
 
-    <div
-      v-if="!hasDiscordToken"
-      class="rounded bg-amber-900/70 p-4 text-amber-100"
-    >
-      <p>請先登入 Discord，才能查看可管理的伺服器。</p>
-      <a
-        href="/"
-        class="mt-3 inline-block underline"
-        @click.prevent="openDiscord"
+    <div v-else class="settings-shell" :data-pane="mobilePane">
+      <nav
+        class="guild-rail"
+        aria-label="伺服器"
+        :inert="isMobile && mobilePane === 'content'"
       >
-        前往 Discord 登入
-      </a>
-    </div>
-
-    <template v-else>
-      <div class="settings-layout">
-        <aside class="settings-sidebar">
-          <div class="sidebar-heading">
-            <h1 class="text-xl font-bold text-white">伺服器設定</h1>
-            <p class="mt-1 text-xs text-zinc-400">選擇要管理的伺服器</p>
-            <a
-              href="/"
-              data-spa-link
-              class="mt-3 inline-block text-sm text-indigo-300 underline"
-            >
-              返回帳號連結
-            </a>
-          </div>
-          <div
-            v-if="guildsLoading"
-            class="rounded bg-zinc-900 p-5 text-zinc-400"
-            role="status"
-            aria-live="polite"
+        <a
+          href="/"
+          data-spa-link
+          class="rail-button"
+          title="返回帳號連結"
+          aria-label="返回帳號連結"
+        >
+          <House :size="24" aria-hidden="true" />
+        </a>
+        <div class="rail-divider" aria-hidden="true"></div>
+        <div class="guild-rail-list">
+          <LoadingSpinner v-if="guildsLoading" class="mx-auto" />
+          <button
+            v-for="guild in sortedGuilds"
+            :key="guild.id"
+            type="button"
+            class="guild-icon"
+            :class="{
+              selected: selectedGuild?.id === guild.id,
+              'not-installed': !guild.botInstalled
+            }"
+            :title="guild.name"
+            :aria-label="
+              guild.botInstalled
+                ? guild.name
+                : `${guild.name}（尚未安裝機器人）`
+            "
+            :aria-pressed="selectedGuild?.id === guild.id"
+            @click="selectGuild(guild)"
           >
+            <img
+              v-if="guild.icon"
+              :src="`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=96`"
+              alt=""
+            />
+            <span v-else aria-hidden="true">{{ guild.name.slice(0, 1) }}</span>
+          </button>
+        </div>
+        <a
+          :href="generalInviteUrl"
+          class="rail-button rail-invite"
+          title="邀請機器人"
+          aria-label="邀請機器人"
+        >
+          <Plus :size="24" aria-hidden="true" />
+        </a>
+      </nav>
+
+      <aside
+        class="channel-sidebar"
+        :inert="isMobile && mobilePane === 'content'"
+      >
+        <header class="sidebar-header">
+          <div class="min-w-0">
+            <h1 class="truncate font-bold text-white">
+              {{ selectedGuild?.name || '伺服器設定' }}
+            </h1>
+            <p v-if="settings" class="truncate text-xs text-zinc-400">
+              <template v-if="settings.guild.memberCount !== undefined">
+                {{ settings.guild.memberCount }} 位成員 ·
+              </template>
+              機器人{{
+                settings.health.botConnected === true
+                  ? '已連線'
+                  : settings.health.botConnected === false
+                    ? '未連線'
+                    : '狀態未知'
+              }}
+            </p>
+          </div>
+          <button
+            v-if="selectedGuild?.botInstalled"
+            type="button"
+            class="icon-button"
+            :title="settingsLoading ? '重新載入中…' : '重新載入設定'"
+            :aria-label="settingsLoading ? '重新載入中' : '重新載入設定'"
+            :disabled="settingsLoading || hasPendingMutations"
+            @click="loadSettings"
+          >
+            <RefreshCw
+              :size="18"
+              :class="{ 'animate-spin': settingsLoading }"
+              aria-hidden="true"
+            />
+          </button>
+        </header>
+
+        <div class="sidebar-body">
+          <div v-if="guildsLoading" class="sidebar-note" role="status">
             <p>正在載入伺服器…</p>
             <div
-              class="loading-progress-track mt-4"
+              class="loading-progress-track mt-3"
               role="progressbar"
               aria-label="正在載入伺服器"
             >
               <span class="loading-progress-value"></span>
             </div>
           </div>
-          <div
-            v-else-if="guildsError"
-            class="rounded bg-red-950 p-5 text-red-100"
-          >
+          <div v-else-if="guildsError" class="sidebar-note text-red-200">
             <p>{{ guildsError }}</p>
             <button
               class="btn mt-3 bg-red-700 active:bg-red-600"
@@ -70,107 +137,140 @@
               重新載入伺服器
             </button>
           </div>
-          <div v-else-if="guilds.length === 0" class="rounded bg-zinc-900 p-5">
+          <p v-else-if="guilds.length === 0" class="sidebar-note">
             目前沒有可管理的伺服器
+          </p>
+          <p v-else-if="!selectedGuild" class="sidebar-note">
+            從左邊選擇要管理的伺服器
+          </p>
+          <div v-else-if="!selectedGuild.botInstalled" class="sidebar-note">
+            <p>這個伺服器還沒加入直播小幫手</p>
+            <button
+              v-if="isMobile"
+              type="button"
+              class="btn mt-3 bg-indigo-600 active:bg-indigo-500"
+              @click="showContent"
+            >
+              查看邀請說明
+            </button>
           </div>
-          <div v-else class="guild-list-wrap">
+          <div
+            v-else-if="settingsLoading && !settings"
+            class="sidebar-note"
+            role="status"
+          >
+            <p>正在載入設定…</p>
             <div
-              ref="guildList"
-              class="guild-list"
-              @pointerdown="startGuildDrag"
-              @pointermove="dragGuildList"
-              @pointerup="stopGuildDrag"
-              @pointercancel="stopGuildDrag"
-              @lostpointercapture="stopGuildDrag"
-              @click.capture="cancelGuildClick"
-              @scroll="updateGuildScrollHints"
-              @wheel="scrollGuildList"
+              class="loading-progress-track mt-3"
+              role="progressbar"
+              aria-label="正在載入伺服器設定"
             >
-              <button
-                v-for="guild in sortedGuilds"
-                :key="guild.id"
-                type="button"
-                class="guild-card rounded border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                :class="
-                  selectedGuild?.id === guild.id
-                    ? 'border-indigo-400 bg-indigo-950/50'
-                    : 'border-zinc-700 bg-zinc-900 hover:border-zinc-500'
-                "
-                :aria-pressed="selectedGuild?.id === guild.id"
-                @click="selectGuild(guild)"
-              >
-                <div class="flex items-center gap-3">
-                  <img
-                    v-if="guild.icon"
-                    :src="`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`"
-                    :alt="`${guild.name} 圖示`"
-                    class="h-10 w-10 rounded-full"
-                  />
-                  <div
-                    v-else
-                    class="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-700 font-bold text-zinc-200"
-                    aria-hidden="true"
-                  >
-                    {{ guild.name.slice(0, 1) }}
-                  </div>
-                  <div class="min-w-0">
-                    <p class="truncate font-bold text-white">
-                      {{ guild.name }}
-                    </p>
-                    <p class="text-xs text-zinc-400">
-                      {{ guild.owner ? '伺服器擁有者' : '伺服器管理員' }}
-                    </p>
-                  </div>
-                </div>
-                <p
-                  class="mt-3 text-sm"
-                  :class="
-                    guild.botInstalled ? 'text-teal-300' : 'text-amber-300'
-                  "
-                >
-                  {{ guild.botInstalled ? '機器人已安裝' : '尚未安裝機器人' }}
-                </p>
-              </button>
-            </div>
-            <div
-              v-if="canScrollBackward"
-              class="guild-scroll-hint guild-scroll-hint-back"
-              title="拖曳或使用滾輪捲動"
-              aria-label="拖曳或使用滾輪捲動伺服器清單"
-            >
-              <span class="lg:hidden">←</span>
-              <span class="hidden lg:inline">↑</span>
-            </div>
-            <div
-              v-if="canScrollForward"
-              class="guild-scroll-hint guild-scroll-hint-forward"
-              title="拖曳或使用滾輪捲動"
-              aria-label="拖曳或使用滾輪捲動伺服器清單"
-            >
-              <span class="lg:hidden">→</span>
-              <span class="hidden lg:inline">↓</span>
+              <span class="loading-progress-value"></span>
             </div>
           </div>
-        </aside>
+          <div v-else-if="settingsError" class="sidebar-note text-red-200">
+            <p>{{ settingsError }}</p>
+            <button
+              class="btn mt-3 bg-red-700 active:bg-red-600"
+              @click="loadSettings"
+            >
+              重新載入設定
+            </button>
+          </div>
 
-        <main class="settings-content">
+          <nav v-else-if="settings" class="channel-list" aria-label="設定功能">
+            <button
+              v-if="hasCapability('guild.common')"
+              type="button"
+              class="channel-item"
+              :class="{ active: activeFeature === 'general' }"
+              :aria-current="activeFeature === 'general' ? 'page' : undefined"
+              @click="openFeature('general')"
+            >
+              <Settings :size="18" aria-hidden="true" />
+              一般設定
+            </button>
+            <template v-for="group in featureGroups" :key="group.feature">
+              <template v-if="group.platforms.length">
+                <h2 class="channel-category">{{ group.label }}</h2>
+                <button
+                  v-for="platform in group.platforms"
+                  :key="platform"
+                  type="button"
+                  class="channel-item"
+                  :class="{ active: isActiveChannel(group.feature, platform) }"
+                  :aria-current="
+                    isActiveChannel(group.feature, platform)
+                      ? 'page'
+                      : undefined
+                  "
+                  @click="openFeature(group.feature, platform)"
+                >
+                  <Hash :size="18" aria-hidden="true" />
+                  {{ platformLabels[platform] }}
+                </button>
+              </template>
+            </template>
+          </nav>
+        </div>
+
+        <footer class="sidebar-footer">
+          <a href="/privacy" data-spa-link>隱私權政策</a>
+          <a href="/terms" data-spa-link>使用條款</a>
+        </footer>
+      </aside>
+
+      <main
+        class="settings-content"
+        :inert="isMobile && mobilePane === 'nav'"
+        :aria-busy="settingsLoading"
+      >
+        <header class="content-header">
+          <button
+            type="button"
+            class="icon-button back-button"
+            aria-label="返回功能列表"
+            @click="showNav"
+          >
+            <ArrowLeft :size="20" aria-hidden="true" />
+          </button>
+          <Hash
+            v-if="settings && activeFeature !== 'general'"
+            :size="20"
+            class="shrink-0 text-zinc-400"
+            aria-hidden="true"
+          />
+          <h2 class="truncate font-bold text-white">{{ contentTitle }}</h2>
+        </header>
+
+        <div class="content-body">
           <div
             v-if="selectedGuild && !selectedGuild.botInstalled"
-            class="mt-6 rounded bg-amber-900/70 p-5 text-amber-100"
+            class="rounded bg-amber-900/70 p-5 text-amber-100"
           >
-            <h2 class="text-lg font-bold">請先邀請機器人</h2>
-            <p class="mt-1 text-sm">
+            <p class="text-sm">
               先將直播小幫手加入「{{
                 selectedGuild.name
-              }}」，再重新選擇這個伺服器，即可設定通知
+              }}」，加入後按「重新檢查」，即可設定通知
             </p>
             <div class="mt-4 flex flex-wrap gap-3">
               <a
                 :href="inviteUrl"
+                target="_blank"
+                rel="noopener noreferrer"
                 class="btn bg-indigo-600 active:bg-indigo-500"
               >
                 邀請機器人
               </a>
+              <button
+                type="button"
+                class="btn gap-2 bg-zinc-700 active:bg-zinc-600"
+                :disabled="guildsLoading"
+                @click="recheckInstall"
+              >
+                <LoadingSpinner v-if="guildsLoading" />
+                {{ guildsLoading ? '檢查中…' : '重新檢查' }}
+              </button>
               <a
                 href="https://konnokai.notion.site/a4fff40bd95c4bec9edca5b78cdd5d37"
                 target="_blank"
@@ -180,981 +280,183 @@
                 查看設定教學
               </a>
             </div>
+            <p v-if="installCheckFailed" class="mt-3 text-sm" role="status">
+              還沒偵測到機器人，請確認已加入這個伺服器後再檢查一次
+            </p>
           </div>
 
-          <div
-            v-if="selectedGuild?.botInstalled"
-            class="mt-6"
-            :aria-busy="settingsLoading"
-          >
-            <div
-              v-if="settingsLoading && !settings"
-              class="rounded bg-zinc-900 p-5 text-zinc-400"
-              role="status"
-              aria-live="polite"
+          <p v-else-if="!settings" class="empty-note">
+            {{
+              selectedGuild
+                ? '設定載入後，從功能列表選擇要管理的項目'
+                : '從左邊選擇要管理的伺服器'
+            }}
+          </p>
+
+          <template v-else>
+            <section
+              v-if="
+                activeFeature === 'general' && hasCapability('guild.common')
+              "
             >
-              <p>正在載入「{{ selectedGuild.name }}」的設定…</p>
-              <div
-                class="loading-progress-track mt-4 max-w-xl"
-                role="progressbar"
-                aria-label="正在載入伺服器設定"
-              >
-                <span class="loading-progress-value"></span>
-              </div>
-            </div>
-            <div
-              v-else-if="settingsError"
-              class="rounded bg-red-950 p-5 text-red-100"
+              <form class="settings-grid" @submit.prevent="saveGeneral">
+                <label>
+                  語系
+                  <select v-model="commonForm.locale" class="field">
+                    <option value="zh-TW">繁體中文</option>
+                    <option value="en-US">English</option>
+                    <option value="ja">日本語</option>
+                  </select>
+                </label>
+                <label>
+                  全域通知頻道
+                  <select
+                    v-model="commonForm.globalNoticeChannelId"
+                    class="field"
+                  >
+                    <option value="">不設定</option>
+                    <option
+                      v-for="channel in writableChannels"
+                      :key="channel.id"
+                      :value="channel.id"
+                    >
+                      # {{ channel.name }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  驗證紀錄頻道
+                  <select
+                    v-model="commonForm.verificationLogChannelId"
+                    class="field"
+                  >
+                    <option value="">不設定</option>
+                    <option
+                      v-for="channel in writableChannels"
+                      :key="channel.id"
+                      :value="channel.id"
+                    >
+                      # {{ channel.name }}
+                    </option>
+                  </select>
+                </label>
+                <button
+                  class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
+                  :disabled="isFormLoading('general')"
+                >
+                  <LoadingSpinner v-if="isFormLoading('general')" />
+                  {{ isFormLoading('general') ? '儲存中…' : '儲存設定' }}
+                </button>
+              </form>
+            </section>
+
+            <section
+              v-if="
+                activeFeature === 'notification' &&
+                hasCapability(`${activePlatform}-notification`)
+              "
             >
-              <p>{{ settingsError }}</p>
+              <p class="section-help">
+                {{
+                  activePlatform === 'youtube'
+                    ? '直播或影片上線時發送通知。沒有設定影片通知頻道時，通知會發到直播通知頻道'
+                    : '直播開始時發送通知到指定頻道'
+                }}
+              </p>
               <button
-                class="btn mt-3 bg-red-700 active:bg-red-600"
-                @click="loadSettings"
+                type="button"
+                class="btn create-button bg-indigo-600 active:bg-indigo-500"
+                @click="openNotificationDialog()"
               >
-                重新載入設定
+                新增 {{ activePlatformLabel }} 通知
               </button>
-            </div>
-
-            <template v-else-if="settings">
-              <div class="mb-5 rounded bg-zinc-900 p-4">
-                <div
-                  class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <h2 class="font-bold text-white">
-                      {{ settings.guild.name }}
-                    </h2>
-                    <p class="mt-1 text-sm text-zinc-400">
-                      <template v-if="settings.guild.memberCount !== undefined">
-                        成員 {{ settings.guild.memberCount }} 人 ·
-                      </template>
-                      機器人{{
-                        settings.health.botConnected === true
-                          ? '已連線'
-                          : settings.health.botConnected === false
-                            ? '未連線'
-                            : '狀態未知'
-                      }}
-                    </p>
-                  </div>
-                  <button
-                    class="btn gap-2 bg-zinc-700 active:bg-zinc-600"
-                    :disabled="settingsLoading || hasPendingMutations"
-                    @click="loadSettings"
-                  >
-                    <LoadingSpinner v-if="settingsLoading" />
-                    {{ settingsLoading ? '重新載入中…' : '重新載入設定' }}
-                  </button>
+              <h3 class="list-title">
+                {{ activePlatformLabel }} 通知 —
+                {{ notificationRows.length }} 個
+              </h3>
+              <div v-if="notificationRows.length" class="item-list">
+                <div class="item-list-head" aria-hidden="true">
+                  <span>來源</span>
+                  <span>通知頻道</span>
                 </div>
+                <button
+                  v-for="row in notificationRows"
+                  :key="row.source"
+                  type="button"
+                  class="item-row"
+                  @click="openNotificationDialog(row.source)"
+                >
+                  <span class="item-main">
+                    <strong>{{ row.sourceName }}</strong>
+                    <span v-if="row.sourceName !== row.source">
+                      {{ row.source }}
+                    </span>
+                  </span>
+                  <span class="item-meta">
+                    # {{ channelName(row.channelId) }}
+                    <span
+                      v-if="row.detectionEnabled === false"
+                      class="block text-amber-300"
+                    >
+                      尚未建立爬蟲，通知不會送出
+                    </span>
+                  </span>
+                  <ChevronRight
+                    :size="18"
+                    class="hidden shrink-0 text-zinc-500 md:block"
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
+              <p v-else class="empty-note">
+                目前還沒有 {{ activePlatformLabel }} 通知
+              </p>
+            </section>
 
-              <nav
-                class="settings-main-tabs"
-                :class="{ 'mb-5': activeFeature === 'general' }"
-                aria-label="設定功能"
+            <section
+              v-if="
+                activeFeature === 'crawler' &&
+                hasCapability(`${activePlatform}-crawler`)
+              "
+            >
+              <p class="section-help">
+                目前使用 {{ activeCrawler.count }} 個來源（{{
+                  activeCrawler.unlimited
+                    ? '不限數量'
+                    : `上限 ${activeCrawler.limit} 個`
+                }}）
+              </p>
+              <button
+                type="button"
+                class="btn create-button bg-indigo-600 active:bg-indigo-500"
+                :disabled="crawlerAddDisabled"
+                @click="openCrawlerDialog()"
               >
-                <button
-                  v-if="hasCapability('guild.common')"
-                  type="button"
-                  :class="{ active: activeFeature === 'general' }"
-                  :aria-pressed="activeFeature === 'general'"
-                  @click="activeFeature = 'general'"
-                >
-                  一般設定
-                </button>
-                <button
-                  type="button"
-                  :class="{ active: activeFeature === 'notification' }"
-                  :aria-pressed="activeFeature === 'notification'"
-                  @click="activeFeature = 'notification'"
-                >
-                  直播通知
-                </button>
-                <button
-                  type="button"
-                  :class="{ active: activeFeature === 'crawler' }"
-                  :aria-pressed="activeFeature === 'crawler'"
-                  @click="activeFeature = 'crawler'"
-                >
-                  爬蟲
-                </button>
-                <button
-                  type="button"
-                  :class="{ active: activeFeature === 'verification' }"
-                  :aria-pressed="activeFeature === 'verification'"
-                  @click="activeFeature = 'verification'"
-                >
-                  會員驗證
-                </button>
-              </nav>
-
-              <nav
-                v-if="activeFeature !== 'general'"
-                class="settings-sub-tabs"
-                :aria-label="`${activeFeatureLabel}平台`"
-              >
-                <button
-                  v-for="platform in availablePlatforms"
-                  :key="platform.id"
-                  type="button"
-                  :class="{ active: activePlatform === platform.id }"
-                  :aria-pressed="activePlatform === platform.id"
-                  @click="activePlatform = platform.id"
-                >
-                  {{ platform.label }}
-                </button>
-              </nav>
-
-              <Transition name="settings-toast">
-                <div
-                  v-if="mutationReply"
-                  class="settings-toast rounded p-4"
-                  :class="replyClass"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <p>{{ replyText }}</p>
-                  <button
-                    v-if="
-                      mutationReply.state === 'unknown' ||
-                      mutationReply.state === 'timeout'
-                    "
-                    class="btn mt-3 gap-2 bg-zinc-700 active:bg-zinc-600"
-                    :disabled="settingsLoading"
-                    @click="reloadAfterUnknown"
-                  >
-                    <LoadingSpinner v-if="settingsLoading" />
-                    {{ settingsLoading ? '重新載入中…' : '重新載入設定' }}
-                  </button>
-                </div>
-              </Transition>
-
-              <section
-                v-if="
-                  activeFeature === 'general' && hasCapability('guild.common')
-                "
-                class="settings-section"
-              >
-                <h2>一般設定</h2>
-                <form class="settings-grid" @submit.prevent="saveGeneral">
-                  <label>
-                    語系
-                    <select v-model="commonForm.locale" class="field">
-                      <option value="zh-TW">繁體中文</option>
-                      <option value="en-US">English</option>
-                      <option value="ja">日本語</option>
-                    </select>
-                  </label>
-                  <label>
-                    全域通知頻道
-                    <select
-                      v-model="commonForm.globalNoticeChannelId"
-                      class="field"
-                    >
-                      <option value="">不設定</option>
-                      <option
-                        v-for="channel in writableChannels"
-                        :key="channel.id"
-                        :value="channel.id"
-                      >
-                        # {{ channel.name }}
-                      </option>
-                    </select>
-                  </label>
-                  <label>
-                    驗證紀錄頻道
-                    <select
-                      v-model="commonForm.verificationLogChannelId"
-                      class="field"
-                    >
-                      <option value="">不設定</option>
-                      <option
-                        v-for="channel in writableChannels"
-                        :key="channel.id"
-                        :value="channel.id"
-                      >
-                        # {{ channel.name }}
-                      </option>
-                    </select>
-                  </label>
-                  <button
-                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                    :disabled="isFormLoading('general')"
-                  >
-                    <LoadingSpinner v-if="isFormLoading('general')" />
-                    {{ isFormLoading('general') ? '儲存中…' : '儲存設定' }}
-                  </button>
-                </form>
-              </section>
-
-              <section
-                v-if="
-                  activeFeature === 'notification' &&
-                  activePlatform === 'youtube' &&
-                  hasCapability('youtube-notification')
-                "
-                class="settings-section"
-              >
-                <h2>YouTube 通知</h2>
-                <p class="section-help">
-                  沒有設定影片通知頻道時，通知會發到直播通知頻道
-                </p>
-                <form
-                  v-for="item in youtubeForms"
-                  :key="item.source"
-                  class="notification-form"
-                  @submit.prevent="saveYouTube(item)"
-                >
-                  <div class="settings-grid">
-                    <label>
-                      YouTube 頻道
-                      <input :value="item.sourceName" class="field" readonly />
-                    </label>
-                    <label>
-                      直播通知頻道
-                      <select
-                        v-model="item.streamChannelId"
-                        class="field"
-                        required
-                      >
-                        <option value="" disabled>請選擇頻道</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <label>
-                      影片通知頻道
-                      <select v-model="item.videoChannelId" class="field">
-                        <option value="">未設定（沿用直播通知頻道）</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <RoleMentionField
-                      v-model="item.messages.newStream"
-                      label="新直播訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="item.messages.newVideo"
-                      label="新影片訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="item.messages.start"
-                      label="直播開始訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="item.messages.end"
-                      label="直播結束訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="item.messages.changeTime"
-                      label="時間變更訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="item.messages.delete"
-                      label="直播刪除訊息"
-                      :roles="mentionRoles"
-                    />
-                    <label class="checkbox-label">
-                      <input v-model="item.createEvent" type="checkbox" />
-                      當有新直播時，自動建立 Discord 活動
-                    </label>
-                  </div>
-                  <p
-                    v-if="item.detectionEnabled === false"
-                    class="mt-3 text-sm text-amber-300"
-                  >
-                    設定已儲存，但目前尚未建立爬蟲，通知不會送出
-                    <button
-                      type="button"
-                      class="ml-2 font-medium underline underline-offset-2"
-                      @click="openCrawler('youtube', item.source)"
-                    >
-                      新增 YouTube 爬蟲
-                    </button>
-                  </p>
-                  <div class="mt-3 flex flex-wrap gap-3">
-                    <button
-                      class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
-                      :disabled="isFormLoading(`youtube:${item.source}`)"
-                    >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `youtube:${item.source}`,
-                            'youtube-notification.upsert'
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `youtube:${item.source}`,
-                          'youtube-notification.upsert'
-                        )
-                          ? '儲存中…'
-                          : '儲存'
-                      }}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn gap-2 bg-red-800 active:bg-red-700"
-                      :disabled="isFormLoading(`youtube:${item.source}`)"
-                      @click="removeYouTube(item.source)"
-                    >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `youtube:${item.source}`,
-                            'youtube-notification.remove'
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `youtube:${item.source}`,
-                          'youtube-notification.remove'
-                        )
-                          ? '移除中…'
-                          : '移除'
-                      }}
-                    </button>
-                  </div>
-                </form>
-                <form
-                  class="notification-form"
-                  @submit.prevent="saveYouTube(newYouTube)"
-                >
-                  <h3>新增 YouTube 通知</h3>
-                  <div class="settings-grid">
-                    <label>
-                      來源 ID
-                      <input
-                        v-model.trim="newYouTube.source"
-                        class="field"
-                        required
-                        autocomplete="off"
-                      />
-                    </label>
-                    <label>
-                      直播通知頻道
-                      <select
-                        v-model="newYouTube.streamChannelId"
-                        class="field"
-                        required
-                      >
-                        <option value="" disabled>請選擇頻道</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <label>
-                      影片通知頻道
-                      <select v-model="newYouTube.videoChannelId" class="field">
-                        <option value="">未設定（沿用直播通知頻道）</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <RoleMentionField
-                      v-model="newYouTube.messages.newStream"
-                      label="新直播訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="newYouTube.messages.newVideo"
-                      label="新影片訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="newYouTube.messages.start"
-                      label="直播開始訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="newYouTube.messages.end"
-                      label="直播結束訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="newYouTube.messages.changeTime"
-                      label="時間變更訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="newYouTube.messages.delete"
-                      label="直播刪除訊息"
-                      :roles="mentionRoles"
-                    />
-                    <label class="checkbox-label">
-                      <input v-model="newYouTube.createEvent" type="checkbox" />
-                      當有新直播時，自動建立 Discord 活動
-                    </label>
-                  </div>
-                  <button
-                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                    :disabled="isFormLoading('youtube:new')"
-                  >
-                    <LoadingSpinner
-                      v-if="
-                        isMutationLoading(
-                          'youtube:new',
-                          'youtube-notification.upsert'
-                        )
-                      "
-                    />
-                    {{ isFormLoading('youtube:new') ? '新增中…' : '新增通知' }}
-                  </button>
-                </form>
-              </section>
-
-              <section
-                v-if="
-                  activeFeature === 'notification' &&
-                  activePlatform === 'twitch' &&
-                  hasCapability('twitch-notification')
-                "
-                class="settings-section"
-              >
-                <h2>Twitch 通知</h2>
-                <form
-                  v-for="item in twitchForms"
-                  :key="item.source"
-                  class="notification-form"
-                  @submit.prevent="saveTwitch(item)"
-                >
-                  <div class="settings-grid">
-                    <label>
-                      Twitch 頻道
-                      <input :value="item.sourceName" class="field" readonly />
-                    </label>
-                    <label>
-                      通知頻道
-                      <select v-model="item.channelId" class="field" required>
-                        <option value="" disabled>請選擇頻道</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <RoleMentionField
-                      v-model="item.startMessage"
-                      label="開播訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="item.endMessage"
-                      label="結束訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="item.changeMessage"
-                      label="變更訊息"
-                      :roles="mentionRoles"
-                    />
-                  </div>
-                  <p
-                    v-if="item.detectionEnabled === false"
-                    class="mt-3 text-sm text-amber-300"
-                  >
-                    設定已儲存，但目前尚未建立爬蟲，通知不會送出
-                    <button
-                      type="button"
-                      class="ml-2 font-medium underline underline-offset-2"
-                      @click="openCrawler('twitch', item.source)"
-                    >
-                      新增 Twitch 爬蟲
-                    </button>
-                  </p>
-                  <div class="mt-3 flex flex-wrap gap-3">
-                    <button
-                      class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
-                      :disabled="isFormLoading(`twitch:${item.source}`)"
-                    >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `twitch:${item.source}`,
-                            'twitch-notification.upsert'
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `twitch:${item.source}`,
-                          'twitch-notification.upsert'
-                        )
-                          ? '儲存中…'
-                          : '儲存'
-                      }}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn gap-2 bg-red-800 active:bg-red-700"
-                      :disabled="isFormLoading(`twitch:${item.source}`)"
-                      @click="removeTwitch(item.source)"
-                    >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `twitch:${item.source}`,
-                            'twitch-notification.remove'
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `twitch:${item.source}`,
-                          'twitch-notification.remove'
-                        )
-                          ? '移除中…'
-                          : '移除'
-                      }}
-                    </button>
-                  </div>
-                </form>
-                <form
-                  class="notification-form"
-                  @submit.prevent="saveTwitch(newTwitch)"
-                >
-                  <h3>新增 Twitch 通知</h3>
-                  <div class="settings-grid">
-                    <label>
-                      來源 ID
-                      <input
-                        v-model.trim="newTwitch.source"
-                        class="field"
-                        required
-                        autocomplete="off"
-                      />
-                    </label>
-                    <label>
-                      通知頻道
-                      <select
-                        v-model="newTwitch.channelId"
-                        class="field"
-                        required
-                      >
-                        <option value="" disabled>請選擇頻道</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <RoleMentionField
-                      v-model="newTwitch.startMessage"
-                      label="開播訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="newTwitch.endMessage"
-                      label="結束訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="newTwitch.changeMessage"
-                      label="變更訊息"
-                      :roles="mentionRoles"
-                    />
-                  </div>
-                  <button
-                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                    :disabled="isFormLoading('twitch:new')"
-                  >
-                    <LoadingSpinner
-                      v-if="
-                        isMutationLoading(
-                          'twitch:new',
-                          'twitch-notification.upsert'
-                        )
-                      "
-                    />
-                    {{ isFormLoading('twitch:new') ? '新增中…' : '新增通知' }}
-                  </button>
-                </form>
-              </section>
-
-              <section
-                v-if="
-                  activeFeature === 'notification' &&
-                  activePlatform === 'twitcasting' &&
-                  hasCapability('twitcasting-notification')
-                "
-                class="settings-section"
-              >
-                <h2>TwitCasting 通知</h2>
-                <form
-                  v-for="item in twitcastingForms"
-                  :key="item.source"
-                  class="notification-form"
-                  @submit.prevent="saveTwitCasting(item)"
-                >
-                  <div class="settings-grid">
-                    <label>
-                      TwitCasting 頻道
-                      <input :value="item.sourceName" class="field" readonly />
-                    </label>
-                    <label>
-                      通知頻道
-                      <select v-model="item.channelId" class="field" required>
-                        <option value="" disabled>請選擇頻道</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <RoleMentionField
-                      v-model="item.startMessage"
-                      class="wide"
-                      label="開播訊息"
-                      :roles="mentionRoles"
-                      multiline
-                    />
-                  </div>
-                  <p
-                    v-if="item.detectionEnabled === false"
-                    class="mt-3 text-sm text-amber-300"
-                  >
-                    設定已儲存，但目前尚未建立爬蟲，通知不會送出
-                    <button
-                      type="button"
-                      class="ml-2 font-medium underline underline-offset-2"
-                      @click="openCrawler('twitcasting', item.source)"
-                    >
-                      新增 TwitCasting 爬蟲
-                    </button>
-                  </p>
-                  <div class="mt-3 flex flex-wrap gap-3">
-                    <button
-                      class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
-                      :disabled="isFormLoading(`twitcasting:${item.source}`)"
-                    >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `twitcasting:${item.source}`,
-                            'twitcasting-notification.upsert'
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `twitcasting:${item.source}`,
-                          'twitcasting-notification.upsert'
-                        )
-                          ? '儲存中…'
-                          : '儲存'
-                      }}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn gap-2 bg-red-800 active:bg-red-700"
-                      :disabled="isFormLoading(`twitcasting:${item.source}`)"
-                      @click="removeTwitCasting(item.source)"
-                    >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `twitcasting:${item.source}`,
-                            'twitcasting-notification.remove'
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `twitcasting:${item.source}`,
-                          'twitcasting-notification.remove'
-                        )
-                          ? '移除中…'
-                          : '移除'
-                      }}
-                    </button>
-                  </div>
-                </form>
-                <form
-                  class="notification-form"
-                  @submit.prevent="saveTwitCasting(newTwitCasting)"
-                >
-                  <h3>新增 TwitCasting 通知</h3>
-                  <div class="settings-grid">
-                    <label>
-                      來源 ID
-                      <input
-                        v-model.trim="newTwitCasting.source"
-                        class="field"
-                        required
-                        autocomplete="off"
-                      />
-                    </label>
-                    <label>
-                      通知頻道
-                      <select
-                        v-model="newTwitCasting.channelId"
-                        class="field"
-                        required
-                      >
-                        <option value="" disabled>請選擇頻道</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <RoleMentionField
-                      v-model="newTwitCasting.startMessage"
-                      class="wide"
-                      label="開播訊息"
-                      :roles="mentionRoles"
-                      multiline
-                    />
-                  </div>
-                  <button
-                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                    :disabled="isFormLoading('twitcasting:new')"
-                  >
-                    <LoadingSpinner
-                      v-if="
-                        isMutationLoading(
-                          'twitcasting:new',
-                          'twitcasting-notification.upsert'
-                        )
-                      "
-                    />
-                    {{
-                      isFormLoading('twitcasting:new') ? '新增中…' : '新增通知'
-                    }}
-                  </button>
-                </form>
-              </section>
-
-              <section
-                v-if="
-                  activeFeature === 'notification' &&
-                  activePlatform === 'chzzk' &&
-                  hasCapability('chzzk-notification')
-                "
-                class="settings-section"
-              >
-                <h2>CHZZK 通知</h2>
-                <form
-                  v-for="item in chzzkForms"
-                  :key="item.source"
-                  class="notification-form"
-                  @submit.prevent="saveChzzk(item)"
-                >
-                  <div class="settings-grid">
-                    <label>
-                      CHZZK 頻道
-                      <input :value="item.sourceName" class="field" readonly />
-                    </label>
-                    <label>
-                      通知頻道
-                      <select v-model="item.channelId" class="field" required>
-                        <option value="" disabled>請選擇頻道</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <RoleMentionField
-                      v-model="item.startMessage"
-                      label="開播訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="item.endMessage"
-                      label="結束訊息"
-                      :roles="mentionRoles"
-                    />
-                  </div>
-                  <p
-                    v-if="item.detectionEnabled === false"
-                    class="mt-3 text-sm text-amber-300"
-                  >
-                    設定已儲存，但目前尚未建立爬蟲，通知不會送出
-                    <button
-                      type="button"
-                      class="ml-2 font-medium underline underline-offset-2"
-                      @click="openCrawler('chzzk', item.source)"
-                    >
-                      新增 CHZZK 爬蟲
-                    </button>
-                  </p>
-                  <div class="mt-3 flex flex-wrap gap-3">
-                    <button
-                      class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
-                      :disabled="isFormLoading(`chzzk:${item.source}`)"
-                    >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `chzzk:${item.source}`,
-                            'chzzk-notification.upsert'
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `chzzk:${item.source}`,
-                          'chzzk-notification.upsert'
-                        )
-                          ? '儲存中…'
-                          : '儲存'
-                      }}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn gap-2 bg-red-800 active:bg-red-700"
-                      :disabled="isFormLoading(`chzzk:${item.source}`)"
-                      @click="removeChzzk(item.source)"
-                    >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `chzzk:${item.source}`,
-                            'chzzk-notification.remove'
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `chzzk:${item.source}`,
-                          'chzzk-notification.remove'
-                        )
-                          ? '移除中…'
-                          : '移除'
-                      }}
-                    </button>
-                  </div>
-                </form>
-                <form
-                  class="notification-form"
-                  @submit.prevent="saveChzzk(newChzzk)"
-                >
-                  <h3>新增 CHZZK 通知</h3>
-                  <div class="settings-grid">
-                    <label>
-                      來源 ID 或頻道網址
-                      <input
-                        v-model.trim="newChzzk.source"
-                        class="field"
-                        required
-                        autocomplete="off"
-                      />
-                    </label>
-                    <label>
-                      通知頻道
-                      <select v-model="newChzzk.channelId" class="field" required>
-                        <option value="" disabled>請選擇頻道</option>
-                        <option
-                          v-for="channel in writableChannels"
-                          :key="channel.id"
-                          :value="channel.id"
-                        >
-                          # {{ channel.name }}
-                        </option>
-                      </select>
-                    </label>
-                    <RoleMentionField
-                      v-model="newChzzk.startMessage"
-                      label="開播訊息"
-                      :roles="mentionRoles"
-                    />
-                    <RoleMentionField
-                      v-model="newChzzk.endMessage"
-                      label="結束訊息"
-                      :roles="mentionRoles"
-                    />
-                  </div>
-                  <button
-                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                    :disabled="isFormLoading('chzzk:new')"
-                  >
-                    <LoadingSpinner
-                      v-if="
-                        isMutationLoading(
-                          'chzzk:new',
-                          'chzzk-notification.upsert'
-                        )
-                      "
-                    />
-                    {{ isFormLoading('chzzk:new') ? '新增中…' : '新增通知' }}
-                  </button>
-                </form>
-              </section>
-
-              <section
-                v-if="
-                  activeFeature === 'crawler' &&
-                  hasCapability(`${activePlatform}-crawler`)
-                "
-                class="settings-section"
-              >
-                <div>
-                  <h2>{{ activePlatformLabel }} 爬蟲</h2>
-                  <p class="section-help">
-                    目前使用 {{ activeCrawler.count }} 個來源（{{
-                      activeCrawler.unlimited
-                        ? '不限數量'
-                        : `上限 ${activeCrawler.limit} 個`
-                    }}）
-                  </p>
-                </div>
+                {{
+                  activeCrawler.enabled
+                    ? `新增 ${activePlatformLabel} 爬蟲`
+                    : '平台目前已停用'
+                }}
+              </button>
+              <h3 class="list-title">
+                {{ activePlatformLabel }} 爬蟲 —
+                {{ activeCrawler.items.length }} 個
+              </h3>
+              <div v-if="activeCrawler.items.length" class="item-list">
                 <div
                   v-for="item in activeCrawler.items"
                   :key="item.sourceId"
-                  class="settings-row"
+                  class="item-row"
                 >
-                  <div>
+                  <span class="item-main">
                     <strong>{{ item.sourceName || item.sourceId }}</strong>
-                    <p>{{ item.sourceId }}</p>
-                  </div>
+                    <span v-if="item.sourceName">{{ item.sourceId }}</span>
+                  </span>
                   <button
                     type="button"
-                    class="btn gap-2 bg-red-800 active:bg-red-700"
+                    class="icon-button danger"
+                    :title="`移除 ${item.sourceName || item.sourceId}`"
+                    :aria-label="`移除 ${item.sourceName || item.sourceId}`"
                     :disabled="
                       isFormLoading(
                         `crawler:${activePlatform}:${item.sourceId}`
@@ -1164,321 +466,581 @@
                   >
                     <LoadingSpinner
                       v-if="
-                        isMutationLoading(
-                          `crawler:${activePlatform}:${item.sourceId}`,
-                          `${activePlatform}-crawler.remove`
+                        isFormLoading(
+                          `crawler:${activePlatform}:${item.sourceId}`
                         )
                       "
                     />
-                    {{
-                      isMutationLoading(
-                        `crawler:${activePlatform}:${item.sourceId}`,
-                        `${activePlatform}-crawler.remove`
-                      )
-                        ? '移除中…'
-                        : '移除'
-                    }}
+                    <Trash v-else :size="18" aria-hidden="true" />
                   </button>
                 </div>
-                <p v-if="activeCrawler.items.length === 0" class="empty-note">
-                  目前還沒有 {{ activePlatformLabel }} 爬蟲來源
-                </p>
-                <form class="settings-grid" @submit.prevent="addCrawler">
-                  <label>
-                    頻道網址、登入名稱（login）或 ID
-                    <input
-                      v-model.trim="newCrawlerSources[activePlatform]"
-                      class="field"
-                      required
-                      autocomplete="off"
-                      :disabled="!activeCrawler.enabled"
-                    />
-                  </label>
-                  <button
-                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                    :disabled="
-                      !activeCrawler.enabled ||
-                      (!activeCrawler.unlimited &&
-                        activeCrawler.count >= activeCrawler.limit) ||
-                      isFormLoading(`crawler:${activePlatform}:new`)
-                    "
-                  >
-                    <LoadingSpinner
-                      v-if="
-                        isMutationLoading(
-                          `crawler:${activePlatform}:new`,
-                          `${activePlatform}-crawler.add`
-                        )
-                      "
-                    />
-                    {{
-                      isMutationLoading(
-                        `crawler:${activePlatform}:new`,
-                        `${activePlatform}-crawler.add`
-                      )
-                        ? '新增中…'
-                        : activeCrawler.enabled
-                          ? '新增爬蟲'
-                          : '平台目前已停用'
-                    }}
-                  </button>
-                </form>
-              </section>
+              </div>
+              <p v-else class="empty-note">
+                目前還沒有 {{ activePlatformLabel }} 爬蟲來源
+              </p>
+            </section>
 
-              <section
-                v-if="
-                  activeFeature === 'verification' &&
-                  hasCapability(`${activePlatform}-verification`)
-                "
-                class="settings-section"
+            <section
+              v-if="
+                activeFeature === 'verification' &&
+                hasCapability(`${activePlatform}-verification`)
+              "
+            >
+              <p class="section-help">設定驗證來源、Discord 身分組和驗證紀錄</p>
+              <button
+                type="button"
+                class="btn create-button bg-indigo-600 active:bg-indigo-500"
+                @click="openVerificationDialog()"
               >
-                <div>
-                  <h2>{{ activePlatformLabel }} {{ verificationName }}</h2>
-                  <p class="section-help">
-                    設定驗證來源、Discord 身分組和驗證紀錄
-                  </p>
+                新增{{ verificationName }}設定
+              </button>
+              <h3 class="list-title">
+                {{ activePlatformLabel }} {{ verificationName }} —
+                {{ activeVerification.length }} 個
+              </h3>
+              <div v-if="activeVerification.length" class="item-list">
+                <div class="item-list-head" aria-hidden="true">
+                  <span>來源</span>
+                  <span>身分組</span>
                 </div>
-                <div
+                <button
                   v-for="item in activeVerification"
                   :key="item.sourceId"
-                  class="verification-card"
+                  type="button"
+                  class="item-row"
+                  @click="openVerificationDialog(item.sourceId)"
                 >
-                  <div>
+                  <span class="item-main">
                     <strong>{{ item.sourceName || item.sourceId }}</strong>
-                    <p>
-                      已有 {{ item.verifiedMemberCount }} 人完成驗證，還有
-                      {{ item.pendingRoleRemovalCount }} 人的身分組待移除
-                    </p>
-                  </div>
-                  <p v-if="item.previousRoleId" class="text-amber-300">
-                    舊身分組 {{ roleName(item.previousRoleId) }} 仍在遷移中
-                  </p>
-                  <p v-if="item.deletionPending" class="text-amber-300">
-                    正在清理，暫時無法更新
-                  </p>
-                  <form
-                    class="settings-grid"
-                    @submit.prevent="saveVerification(item)"
-                  >
-                    <label>
-                      Discord 身分組
-                      <select
-                        v-model="item.roleId"
-                        class="field"
-                        required
-                        :disabled="item.deletionPending"
-                      >
-                        <option
-                          v-for="role in settings?.resources.roles"
-                          :key="role.id"
-                          :value="role.id"
-                          :disabled="!role.botCanManage"
-                        >
-                          {{ role.name
-                          }}{{ role.botCanManage ? '' : '（小幫手無法管理）' }}
-                        </option>
-                      </select>
-                    </label>
-                    <button
-                      class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                      :disabled="
-                        item.deletionPending ||
-                        isFormLoading(
-                          `verification:${activePlatform}:${item.sourceId}`
-                        )
-                      "
+                    <span>已驗證 {{ item.verifiedMemberCount }} 人</span>
+                  </span>
+                  <span class="item-meta">
+                    @{{ roleName(item.roleId) }}
+                    <span
+                      v-if="item.deletionPending"
+                      class="block text-amber-300"
                     >
-                      <LoadingSpinner
-                        v-if="
-                          isMutationLoading(
-                            `verification:${activePlatform}:${item.sourceId}`,
-                            `${activePlatform}-verification.upsert`
-                          )
-                        "
-                      />
-                      {{
-                        isMutationLoading(
-                          `verification:${activePlatform}:${item.sourceId}`,
-                          `${activePlatform}-verification.upsert`
-                        )
-                          ? '儲存中…'
-                          : '儲存'
-                      }}
-                    </button>
-                  </form>
-                  <template v-if="activePlatform === 'youtube'">
-                    <p>
-                      會員限定影片偵測模式：
-                      {{ item.probeMode === 'manual' ? '手動' : '自動' }}（{{
-                        item.probeVideoId
-                      }}）
-                    </p>
-                    <form
-                      class="settings-grid"
-                      @submit.prevent="setProbeVideo(item)"
+                      正在清理
+                    </span>
+                    <span
+                      v-else-if="item.previousRoleId"
+                      class="block text-amber-300"
                     >
-                      <label>
-                        手動偵測影片網址或 ID
-                        <input
-                          v-model.trim="probeVideos[item.sourceId]"
-                          class="field"
-                          required
-                        />
-                      </label>
-                      <button
-                        class="btn mt-3 gap-2 bg-zinc-700 active:bg-zinc-600"
-                        :disabled="
-                          isFormLoading(`verification:youtube:${item.sourceId}`)
-                        "
-                      >
-                        <LoadingSpinner
-                          v-if="
-                            isMutationLoading(
-                              `verification:youtube:${item.sourceId}`,
-                              'youtube-verification.set-probe-video'
-                            )
-                          "
-                        />
-                        {{
-                          isMutationLoading(
-                            `verification:youtube:${item.sourceId}`,
-                            'youtube-verification.set-probe-video'
-                          )
-                            ? '指定中…'
-                            : '指定影片'
-                        }}
-                      </button>
-                      <button
-                        type="button"
-                        class="btn mt-3 gap-2 bg-zinc-700 active:bg-zinc-600"
-                        :disabled="
-                          isFormLoading(`verification:youtube:${item.sourceId}`)
-                        "
-                        @click="useAutomaticProbe(item.sourceId)"
-                      >
-                        <LoadingSpinner
-                          v-if="
-                            isMutationLoading(
-                              `verification:youtube:${item.sourceId}`,
-                              'youtube-verification.use-automatic-probe'
-                            )
-                          "
-                        />
-                        {{
-                          isMutationLoading(
-                            `verification:youtube:${item.sourceId}`,
-                            'youtube-verification.use-automatic-probe'
-                          )
-                            ? '恢復中…'
-                            : '改回自動探索'
-                        }}
-                      </button>
-                    </form>
-                  </template>
-                  <div v-else class="tier-role-list">
-                    <p>層級身分組：</p>
-                    <p v-for="tierRole in tierRoleNames(item)" :key="tierRole">
-                      {{ tierRole }}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn mt-3 gap-2 bg-red-800 active:bg-red-700"
-                    :disabled="
-                      item.deletionPending ||
-                      isFormLoading(
-                        `verification:${activePlatform}:${item.sourceId}`
-                      )
-                    "
-                    @click="removeVerification(item.sourceId)"
-                  >
-                    <LoadingSpinner
-                      v-if="
-                        isMutationLoading(
-                          `verification:${activePlatform}:${item.sourceId}`,
-                          `${activePlatform}-verification.remove`
-                        )
-                      "
-                    />
-                    {{
-                      isMutationLoading(
-                        `verification:${activePlatform}:${item.sourceId}`,
-                        `${activePlatform}-verification.remove`
-                      )
-                        ? '移除中…'
-                        : '移除設定'
-                    }}
-                  </button>
-                </div>
-                <p v-if="activeVerification.length === 0" class="empty-note">
-                  目前還沒有 {{ activePlatformLabel }} 驗證設定
-                </p>
-                <form class="settings-grid" @submit.prevent="addVerification">
-                  <label>
-                    頻道網址或 ID
-                    <input
-                      v-model.trim="newVerification.source"
-                      class="field"
-                      required
-                      autocomplete="off"
-                    />
-                  </label>
-                  <label>
-                    Discord 身分組
-                    <select
-                      v-model="newVerification.roleId"
-                      class="field"
-                      required
-                    >
-                      <option value="" disabled>請選擇身分組</option>
-                      <option
-                        v-for="role in settings?.resources.roles"
-                        :key="role.id"
-                        :value="role.id"
-                        :disabled="!role.botCanManage"
-                      >
-                        {{ role.name
-                        }}{{ role.botCanManage ? '' : '（小幫手無法管理）' }}
-                      </option>
-                    </select>
-                  </label>
-                  <button
-                    class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                    :disabled="
-                      isFormLoading(`verification:${activePlatform}:new`)
-                    "
-                  >
-                    <LoadingSpinner
-                      v-if="
-                        isMutationLoading(
-                          `verification:${activePlatform}:new`,
-                          `${activePlatform}-verification.upsert`
-                        )
-                      "
-                    />
-                    {{
-                      isMutationLoading(
-                        `verification:${activePlatform}:new`,
-                        `${activePlatform}-verification.upsert`
-                      )
-                        ? '新增中…'
-                        : '新增驗證設定'
-                    }}
-                  </button>
-                </form>
-              </section>
-            </template>
+                      舊身分組遷移中
+                    </span>
+                  </span>
+                  <ChevronRight
+                    :size="18"
+                    class="hidden shrink-0 text-zinc-500 md:block"
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+              <p v-else class="empty-note">
+                目前還沒有 {{ activePlatformLabel }} 驗證設定
+              </p>
+            </section>
+          </template>
+        </div>
+      </main>
+
+      <SettingsDialog
+        v-if="dialog?.kind === 'notification'"
+        :title="`${dialog?.source ? '編輯' : '新增'} ${activePlatformLabel} 通知`"
+        @close="closeDialog"
+      >
+        <form class="dialog-form" @submit.prevent="submitNotification">
+          <label>
+            {{
+              dialog?.source
+                ? `${activePlatformLabel} 頻道`
+                : activePlatform === 'chzzk'
+                  ? '來源 ID 或頻道網址'
+                  : '來源 ID'
+            }}
+            <input
+              v-if="dialog?.source"
+              :value="notificationDraft.sourceName"
+              class="field"
+              readonly
+            />
+            <input
+              v-else
+              v-model.trim="notificationDraft.source"
+              class="field"
+              required
+              autocomplete="off"
+            />
+          </label>
+
+          <template v-if="activePlatform === 'youtube'">
+            <label>
+              直播通知頻道
+              <select
+                v-model="youtubeDraft.streamChannelId"
+                class="field"
+                required
+              >
+                <option value="" disabled>請選擇頻道</option>
+                <option
+                  v-for="channel in writableChannels"
+                  :key="channel.id"
+                  :value="channel.id"
+                >
+                  # {{ channel.name }}
+                </option>
+              </select>
+            </label>
+            <label>
+              影片通知頻道
+              <select v-model="youtubeDraft.videoChannelId" class="field">
+                <option value="">未設定（沿用直播通知頻道）</option>
+                <option
+                  v-for="channel in writableChannels"
+                  :key="channel.id"
+                  :value="channel.id"
+                >
+                  # {{ channel.name }}
+                </option>
+              </select>
+            </label>
+            <RoleMentionField
+              v-model="youtubeDraft.messages.newStream"
+              label="新直播訊息"
+              :roles="mentionRoles"
+            />
+            <RoleMentionField
+              v-model="youtubeDraft.messages.newVideo"
+              label="新影片訊息"
+              :roles="mentionRoles"
+            />
+            <RoleMentionField
+              v-model="youtubeDraft.messages.start"
+              label="直播開始訊息"
+              :roles="mentionRoles"
+            />
+            <RoleMentionField
+              v-model="youtubeDraft.messages.end"
+              label="直播結束訊息"
+              :roles="mentionRoles"
+            />
+            <RoleMentionField
+              v-model="youtubeDraft.messages.changeTime"
+              label="時間變更訊息"
+              :roles="mentionRoles"
+            />
+            <RoleMentionField
+              v-model="youtubeDraft.messages.delete"
+              label="直播刪除訊息"
+              :roles="mentionRoles"
+            />
+            <label class="checkbox-label">
+              <input v-model="youtubeDraft.createEvent" type="checkbox" />
+              當有新直播時，自動建立 Discord 活動
+            </label>
+          </template>
+
+          <template v-else>
+            <label>
+              通知頻道
+              <select
+                v-model="otherNotificationDraft.channelId"
+                class="field"
+                required
+              >
+                <option value="" disabled>請選擇頻道</option>
+                <option
+                  v-for="channel in writableChannels"
+                  :key="channel.id"
+                  :value="channel.id"
+                >
+                  # {{ channel.name }}
+                </option>
+              </select>
+            </label>
+            <RoleMentionField
+              v-model="otherNotificationDraft.startMessage"
+              label="開播訊息"
+              :roles="mentionRoles"
+              :multiline="activePlatform === 'twitcasting'"
+            />
+            <RoleMentionField
+              v-if="activePlatform === 'twitch'"
+              v-model="twitchDraft.endMessage"
+              label="結束訊息"
+              :roles="mentionRoles"
+            />
+            <RoleMentionField
+              v-if="activePlatform === 'chzzk'"
+              v-model="chzzkDraft.endMessage"
+              label="結束訊息"
+              :roles="mentionRoles"
+            />
+            <RoleMentionField
+              v-if="activePlatform === 'twitch'"
+              v-model="twitchDraft.changeMessage"
+              label="變更訊息"
+              :roles="mentionRoles"
+            />
+          </template>
+
+          <p
+            v-if="
+              dialog?.source && notificationDraft.detectionEnabled === false
+            "
+            class="text-sm text-amber-300"
+          >
+            設定已儲存，但目前尚未建立爬蟲，通知不會送出
+            <button
+              type="button"
+              class="ml-2 font-medium underline underline-offset-2"
+              @click="openCrawler(activePlatform, notificationDraft.source)"
+            >
+              新增 {{ activePlatformLabel }} 爬蟲
+            </button>
+          </p>
+
+          <div class="dialog-actions">
+            <button
+              v-if="dialog?.source"
+              type="button"
+              class="btn mr-auto gap-2 bg-red-800 active:bg-red-700"
+              :disabled="isFormLoading(notificationKey)"
+              @click="removeNotification"
+            >
+              <LoadingSpinner
+                v-if="
+                  isMutationLoading(
+                    notificationKey,
+                    `${activePlatform}-notification.remove`
+                  )
+                "
+              />
+              移除
+            </button>
+            <button
+              type="button"
+              class="btn bg-zinc-700 active:bg-zinc-600"
+              @click="closeDialog"
+            >
+              取消
+            </button>
+            <button
+              class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
+              :disabled="isFormLoading(notificationKey)"
+            >
+              <LoadingSpinner
+                v-if="
+                  isMutationLoading(
+                    notificationKey,
+                    `${activePlatform}-notification.upsert`
+                  )
+                "
+              />
+              {{ dialog?.source ? '儲存' : '新增通知' }}
+            </button>
           </div>
-        </main>
+        </form>
+      </SettingsDialog>
+
+      <SettingsDialog
+        v-if="dialog?.kind === 'crawler'"
+        :title="`新增 ${activePlatformLabel} 爬蟲`"
+        @close="closeDialog"
+      >
+        <form class="dialog-form" @submit.prevent="submitCrawler">
+          <label>
+            頻道網址、登入名稱（login）或 ID
+            <input
+              v-model.trim="newCrawlerSources[activePlatform]"
+              class="field"
+              required
+              autocomplete="off"
+            />
+          </label>
+          <p v-if="crawlerAddDisabled" class="text-sm text-amber-300">
+            {{
+              activeCrawler.enabled
+                ? '已達此伺服器的爬蟲數量上限，若有需要請聯絡 Bot 擁有者。'
+                : '平台目前已停用'
+            }}
+          </p>
+          <div class="dialog-actions">
+            <button
+              type="button"
+              class="btn bg-zinc-700 active:bg-zinc-600"
+              @click="closeDialog"
+            >
+              取消
+            </button>
+            <button
+              class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
+              :disabled="
+                crawlerAddDisabled ||
+                isFormLoading(`crawler:${activePlatform}:new`)
+              "
+            >
+              <LoadingSpinner
+                v-if="isFormLoading(`crawler:${activePlatform}:new`)"
+              />
+              新增爬蟲
+            </button>
+          </div>
+        </form>
+      </SettingsDialog>
+
+      <SettingsDialog
+        v-if="dialog?.kind === 'verification'"
+        :title="
+          editingVerification
+            ? editingVerification.sourceName || editingVerification.sourceId
+            : `新增${verificationName}設定`
+        "
+        @close="closeDialog"
+      >
+        <form
+          v-if="!dialog?.source"
+          class="dialog-form"
+          @submit.prevent="submitVerification"
+        >
+          <label>
+            頻道網址或 ID
+            <input
+              v-model.trim="newVerification.source"
+              class="field"
+              required
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            Discord 身分組
+            <select v-model="newVerification.roleId" class="field" required>
+              <option value="" disabled>請選擇身分組</option>
+              <option
+                v-for="role in settings?.resources.roles"
+                :key="role.id"
+                :value="role.id"
+                :disabled="!role.botCanManage"
+              >
+                {{ role.name
+                }}{{ role.botCanManage ? '' : '（小幫手無法管理）' }}
+              </option>
+            </select>
+          </label>
+          <div class="dialog-actions">
+            <button
+              type="button"
+              class="btn bg-zinc-700 active:bg-zinc-600"
+              @click="closeDialog"
+            >
+              取消
+            </button>
+            <button
+              class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
+              :disabled="isFormLoading(`verification:${activePlatform}:new`)"
+            >
+              <LoadingSpinner
+                v-if="isFormLoading(`verification:${activePlatform}:new`)"
+              />
+              新增驗證設定
+            </button>
+          </div>
+        </form>
+
+        <div v-else-if="editingVerification" class="dialog-form">
+          <p class="text-sm text-zinc-400">
+            已有 {{ editingVerification.verifiedMemberCount }}
+            人完成驗證，還有
+            {{ editingVerification.pendingRoleRemovalCount }}
+            人的身分組待移除
+          </p>
+          <p
+            v-if="editingVerification.previousRoleId"
+            class="text-sm text-amber-300"
+          >
+            舊身分組 {{ roleName(editingVerification.previousRoleId) }}
+            仍在遷移中
+          </p>
+          <p
+            v-if="editingVerification.deletionPending"
+            class="text-sm text-amber-300"
+          >
+            正在清理，暫時無法更新
+          </p>
+          <form class="dialog-inline-form" @submit.prevent="submitVerification">
+            <label>
+              Discord 身分組
+              <select
+                v-model="verificationRole"
+                class="field"
+                required
+                :disabled="editingVerification.deletionPending"
+              >
+                <option
+                  v-for="role in settings?.resources.roles"
+                  :key="role.id"
+                  :value="role.id"
+                  :disabled="!role.botCanManage"
+                >
+                  {{ role.name
+                  }}{{ role.botCanManage ? '' : '（小幫手無法管理）' }}
+                </option>
+              </select>
+            </label>
+            <button
+              class="btn gap-2 bg-indigo-600 active:bg-indigo-500"
+              :disabled="
+                editingVerification.deletionPending ||
+                isFormLoading(verificationKey)
+              "
+            >
+              <LoadingSpinner
+                v-if="
+                  isMutationLoading(
+                    verificationKey,
+                    `${activePlatform}-verification.upsert`
+                  )
+                "
+              />
+              儲存
+            </button>
+          </form>
+
+          <template v-if="activePlatform === 'youtube'">
+            <p class="text-sm">
+              會員限定影片偵測模式：
+              {{
+                editingVerification.probeMode === 'manual' ? '手動' : '自動'
+              }}（{{ editingVerification.probeVideoId }}）
+            </p>
+            <form
+              class="dialog-inline-form"
+              @submit.prevent="setProbeVideo(editingVerification.sourceId)"
+            >
+              <label>
+                手動偵測影片網址或 ID
+                <input
+                  v-model.trim="probeVideos[editingVerification.sourceId]"
+                  class="field"
+                  required
+                />
+              </label>
+              <button
+                class="btn gap-2 bg-zinc-700 active:bg-zinc-600"
+                :disabled="isFormLoading(verificationKey)"
+              >
+                <LoadingSpinner
+                  v-if="
+                    isMutationLoading(
+                      verificationKey,
+                      'youtube-verification.set-probe-video'
+                    )
+                  "
+                />
+                指定影片
+              </button>
+              <button
+                type="button"
+                class="btn gap-2 bg-zinc-700 active:bg-zinc-600"
+                :disabled="isFormLoading(verificationKey)"
+                @click="useAutomaticProbe(editingVerification.sourceId)"
+              >
+                <LoadingSpinner
+                  v-if="
+                    isMutationLoading(
+                      verificationKey,
+                      'youtube-verification.use-automatic-probe'
+                    )
+                  "
+                />
+                改回自動探索
+              </button>
+            </form>
+          </template>
+          <div v-else class="grid gap-1 text-sm text-zinc-400">
+            <p>層級身分組：</p>
+            <p
+              v-for="tierRole in tierRoleNames(editingVerification)"
+              :key="tierRole"
+            >
+              {{ tierRole }}
+            </p>
+          </div>
+
+          <div class="dialog-actions">
+            <button
+              type="button"
+              class="btn mr-auto gap-2 bg-red-800 active:bg-red-700"
+              :disabled="
+                editingVerification.deletionPending ||
+                isFormLoading(verificationKey)
+              "
+              @click="removeVerificationFromDialog"
+            >
+              <LoadingSpinner
+                v-if="
+                  isMutationLoading(
+                    verificationKey,
+                    `${activePlatform}-verification.remove`
+                  )
+                "
+              />
+              移除設定
+            </button>
+            <button
+              type="button"
+              class="btn bg-zinc-700 active:bg-zinc-600"
+              @click="closeDialog"
+            >
+              關閉
+            </button>
+          </div>
+        </div>
+      </SettingsDialog>
+
+      <div
+        ref="toast"
+        popover="manual"
+        class="settings-toast"
+        :class="replyClass"
+        role="status"
+        aria-live="polite"
+      >
+        <template v-if="mutationReply">
+          <p>{{ replyText }}</p>
+          <button
+            v-if="
+              mutationReply.state === 'unknown' ||
+              mutationReply.state === 'timeout'
+            "
+            class="btn mt-3 gap-2 bg-zinc-700 active:bg-zinc-600"
+            :disabled="settingsLoading"
+            @click="reloadAfterUnknown"
+          >
+            <LoadingSpinner v-if="settingsLoading" />
+            {{ settingsLoading ? '重新載入中…' : '重新載入設定' }}
+          </button>
+        </template>
       </div>
-    </template>
-  </section>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import {
+  ArrowLeft,
+  ChevronRight,
+  Hash,
+  House,
+  Plus,
+  RefreshCw,
+  Settings,
+  Trash
+} from '@lucide/vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import RoleMentionField from '../components/RoleMentionField.vue';
+import SettingsDialog from '../components/SettingsDialog.vue';
 import { startDiscordOAuth } from '../lib/discordOAuth';
 import {
   AdminSettingsApiError,
@@ -1559,15 +1121,24 @@ const settingsError = ref('');
 const pendingMutations = ref(new Set<string>());
 const pendingMutationActions = ref<Record<string, AdminMutationAction>>({});
 const mutationReply = ref<AdminMutationReply | null>(null);
-const guildList = ref<HTMLElement | null>(null);
-const canScrollBackward = ref(false);
-const canScrollForward = ref(false);
+const toast = ref<HTMLElement | null>(null);
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
-let dragStart: { x: number; y: number; left: number; top: number } | null =
-  null;
-let guildDragged = false;
-let dragPointerId: number | null = null;
 let guildSelectionVersion = 0;
+// 手機版一次只顯示「伺服器＋功能列表」或「內容」其中一頁
+const mobilePane = ref<'nav' | 'content'>('nav');
+const mobileQuery = window.matchMedia('(width < 48rem)');
+const isMobile = ref(mobileQuery.matches);
+const syncMobile = (event: MediaQueryListEvent) => {
+  isMobile.value = event.matches;
+};
+type DialogState = {
+  kind: 'notification' | 'crawler' | 'verification';
+  source?: string;
+};
+const dialog = ref<DialogState | null>(null);
+const closeDialog = () => {
+  dialog.value = null;
+};
 const commonForm = ref<CommonForm>({
   locale: 'zh-TW',
   globalNoticeChannelId: '',
@@ -1624,10 +1195,30 @@ const emptyChzzk = (): ChzzkForm => ({
   startMessage: '',
   endMessage: ''
 });
-const newYouTube = ref(emptyYouTube());
-const newTwitch = ref(emptyTwitch());
-const newTwitCasting = ref(emptyTwitCasting());
-const newChzzk = ref(emptyChzzk());
+// 對話框編輯的是複本，按取消就不會改到列表
+const youtubeDraft = ref(emptyYouTube());
+const twitchDraft = ref(emptyTwitch());
+const twitcastingDraft = ref(emptyTwitCasting());
+const chzzkDraft = ref(emptyChzzk());
+const otherNotificationDraft = computed(() =>
+  activePlatform.value === 'twitch'
+    ? twitchDraft.value
+    : activePlatform.value === 'chzzk'
+      ? chzzkDraft.value
+      : twitcastingDraft.value
+);
+const notificationDraft = computed(() =>
+  activePlatform.value === 'youtube'
+    ? youtubeDraft.value
+    : otherNotificationDraft.value
+);
+const notificationKey = computed(
+  () => `${activePlatform.value}:${dialog.value?.source || 'new'}`
+);
+const verificationKey = computed(
+  () => `verification:${activePlatform.value}:${dialog.value?.source}`
+);
+const verificationRole = ref('');
 
 const writableChannels = computed(() =>
   (settings.value?.resources.channels || []).filter(
@@ -1646,31 +1237,52 @@ const platformsByFeature: Record<Exclude<Feature, 'general'>, Platform[]> = {
   crawler: ['youtube', 'twitch', 'twitcasting', 'chzzk'],
   verification: ['youtube', 'twitch']
 };
-const availablePlatforms = computed(() => {
-  if (activeFeature.value === 'general') return [];
-  return platformsByFeature[activeFeature.value]
-    .filter((platform) =>
-      activeFeature.value === 'notification'
-        ? hasCapability(`${platform}-notification`)
-        : hasCapability(`${platform}-${activeFeature.value}`)
+const featureLabels: Record<Exclude<Feature, 'general'>, string> = {
+  notification: '直播通知',
+  crawler: '爬蟲',
+  verification: '會員驗證'
+};
+const featureGroups = computed(() =>
+  (['notification', 'crawler', 'verification'] as const).map((feature) => ({
+    feature,
+    label: featureLabels[feature],
+    platforms: platformsByFeature[feature].filter((platform) =>
+      hasCapability(`${platform}-${feature}`)
     )
-    .map((id) => ({ id, label: platformLabels[id] }));
-});
-const activeFeatureLabel = computed(
-  () =>
-    ({
-      general: '',
-      notification: '直播通知',
-      crawler: '爬蟲',
-      verification: '會員驗證'
-    })[activeFeature.value]
+  }))
 );
+const isActiveChannel = (feature: Feature, platform: Platform) =>
+  activeFeature.value === feature && activePlatform.value === platform;
 const activePlatformLabel = computed(
   () => platformLabels[activePlatform.value]
 );
 const verificationName = computed(() =>
   activePlatform.value === 'twitch' ? '訂閱驗證' : '會員驗證'
 );
+const contentTitle = computed(() => {
+  if (!selectedGuild.value) return '伺服器設定';
+  if (!selectedGuild.value.botInstalled) return '請先邀請機器人';
+  if (!settings.value) return selectedGuild.value.name;
+  if (activeFeature.value === 'general') return '一般設定';
+  if (activeFeature.value === 'verification')
+    return `${activePlatformLabel.value} ${verificationName.value}`;
+  return `${activePlatformLabel.value} ${featureLabels[activeFeature.value]}`;
+});
+const channelName = (channelId: string) =>
+  settings.value?.resources.channels.find((channel) => channel.id === channelId)
+    ?.name || channelId;
+const notificationRows = computed(() => {
+  if (activePlatform.value === 'youtube')
+    return youtubeForms.value.map((item) => ({
+      ...item,
+      channelId: item.streamChannelId
+    }));
+  return {
+    twitch: twitchForms.value,
+    twitcasting: twitcastingForms.value,
+    chzzk: chzzkForms.value
+  }[activePlatform.value];
+});
 const emptyCrawler = () => ({
   enabled: false,
   count: 0,
@@ -1680,6 +1292,12 @@ const emptyCrawler = () => ({
 });
 const activeCrawler = computed(
   () => settings.value?.crawlers[activePlatform.value] || emptyCrawler()
+);
+const crawlerAddDisabled = computed(
+  () =>
+    !activeCrawler.value.enabled ||
+    (!activeCrawler.value.unlimited &&
+      activeCrawler.value.count >= activeCrawler.value.limit)
 );
 type VerificationItem = {
   sourceId: string;
@@ -1704,6 +1322,13 @@ const activeVerification = computed<VerificationItem[]>(() => {
     return form;
   });
 });
+const editingVerification = computed(() =>
+  dialog.value?.kind === 'verification' && dialog.value.source
+    ? activeVerification.value.find(
+        (item) => item.sourceId === dialog.value?.source
+      )
+    : undefined
+);
 const roleName = (roleId?: string | null) =>
   settings.value?.resources.roles.find((role) => role.id === roleId)?.name ||
   roleId ||
@@ -1746,9 +1371,12 @@ const setFormLoading = (
   else delete actions[key];
   pendingMutationActions.value = actions;
 };
+// 側欄的「+」讓使用者自己選伺服器；「請先邀請機器人」才鎖定目前選的伺服器
+const generalInviteUrl =
+  'https://discordapp.com/api/oauth2/authorize?client_id=758222559392432160&permissions=2416143425&scope=bot%20applications.commands';
 const inviteUrl = computed(() => {
   const guildId = selectedGuild.value?.id || '';
-  return `https://discordapp.com/api/oauth2/authorize?client_id=758222559392432160&permissions=2416143425&scope=bot%20applications.commands&guild_id=${encodeURIComponent(guildId)}&disable_guild_select=true`;
+  return `${generalInviteUrl}&guild_id=${encodeURIComponent(guildId)}&disable_guild_select=true`;
 });
 const replyClass = computed(() => {
   switch (mutationReply.value?.state) {
@@ -1823,6 +1451,15 @@ const replyText = computed(() => {
 });
 
 const discordToken = (): string | null => sessionStorage.getItem('DT');
+// 後端回 401 代表 Discord 登入已失效，留著舊 token 只會一直失敗，直接回登入畫面
+const handleExpiredSession = (error: unknown): boolean => {
+  if (!(error instanceof AdminSettingsApiError) || error.status !== 401)
+    return false;
+  sessionStorage.removeItem('DT');
+  sessionStorage.removeItem('DD');
+  hasDiscordToken.value = false;
+  return true;
+};
 const hasCapability = (capability: string): boolean =>
   settings.value?.capabilities.includes(capability) || false;
 
@@ -1904,10 +1541,6 @@ const useSnapshot = (snapshot: GuildSettingsSnapshot) => {
     endMessage: item.messages?.end || '',
     detectionEnabled: item.detectionEnabled
   }));
-  newYouTube.value = emptyYouTube();
-  newTwitch.value = emptyTwitch();
-  newTwitCasting.value = emptyTwitCasting();
-  newChzzk.value = emptyChzzk();
   newCrawlerSources.value = {
     youtube: '',
     twitch: '',
@@ -1929,8 +1562,9 @@ const loadGuilds = async () => {
   guildsError.value = '';
   try {
     guilds.value = await getAdminGuilds(apiURL, token);
-    requestAnimationFrame(updateGuildScrollHints);
-  } catch {
+    if (!selectedGuild.value) void restoreView();
+  } catch (error) {
+    if (handleExpiredSession(error)) return;
     guildsError.value = '無法載入可管理的伺服器，請重新登入或稍後再試。';
   } finally {
     guildsLoading.value = false;
@@ -1963,6 +1597,7 @@ const loadSettings = async () => {
     useSnapshot(snapshot);
   } catch (error) {
     if (request.signal.aborted || settingsRequest !== request) return;
+    if (handleExpiredSession(error)) return;
     settingsError.value =
       error instanceof AdminSettingsApiError &&
       (error.status === 504 || error.code === 'settings.timeout')
@@ -1976,8 +1611,12 @@ const loadSettings = async () => {
   }
 };
 
-const selectGuild = async (guild: AdminGuild) => {
-  if (selectedGuild.value?.id === guild.id) return;
+const selectGuild = async (guild: AdminGuild, force = false) => {
+  if (!force && selectedGuild.value?.id === guild.id) {
+    // 手機版從邀請說明返回後，沒裝機器人的伺服器沒有功能列表，再點一次要回到邀請說明
+    if (!guild.botInstalled) showContent();
+    return;
+  }
   guildSelectionVersion += 1;
   settingsRequest?.abort();
   settingsRequest = null;
@@ -1988,7 +1627,186 @@ const selectGuild = async (guild: AdminGuild) => {
   settings.value = null;
   settingsError.value = '';
   mutationReply.value = null;
+  installCheckFailed.value = false;
+  // 沒裝機器人就沒有功能列表可選，手機版直接切到邀請說明；還原畫面時由 restoreView 決定停在哪一頁
+  if (!restoringView) {
+    if (guild.botInstalled) showNav();
+    else showContent();
+  }
   if (guild.botInstalled) await loadSettings();
+};
+
+// 伺服器列表只在進頁面時抓一次，邀請機器人後要重抓才知道裝好了沒
+const installCheckFailed = ref(false);
+const recheckInstall = async () => {
+  const guildId = selectedGuild.value?.id;
+  installCheckFailed.value = false;
+  await loadGuilds();
+  const guild = guilds.value.find((item) => item.id === guildId);
+  if (!guild || guildsError.value || selectedGuild.value?.id !== guildId)
+    return;
+  if (guild.botInstalled) await selectGuild(guild, true);
+  else installCheckFailed.value = true;
+};
+
+// 手機版進內容頁時多記一筆歷史，系統返回手勢才會回到功能列表，而不是離開設定頁
+let contentPushPending = false;
+const showContent = () => {
+  if (!isMobile.value || window.history.state?.settingsPane === 'content') {
+    mobilePane.value = 'content';
+    return;
+  }
+  if (contentPushPending) return;
+  contentPushPending = true;
+  // iOS 返回手勢先顯示離開那一頁時拍的畫面，等新的反白畫上去再記歷史，畫面才不會停在上一個選項
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      contentPushPending = false;
+      window.history.pushState(
+        { ...window.history.state, settingsPane: 'content' },
+        ''
+      );
+      mobilePane.value = 'content';
+    })
+  );
+};
+const showNav = () => {
+  if (window.history.state?.settingsPane === 'content') window.history.back();
+  else mobilePane.value = 'nav';
+};
+
+// 對話框在手機上是全螢幕，也記一筆歷史，返回手勢才會先關對話框
+type DialogHistory = DialogState & {
+  guildId?: string;
+  feature: Feature;
+  platform: Platform;
+};
+// 往前滑回對話框那一筆時，只在還是同一個伺服器、同一個功能、項目也還在時才開回來
+const canReopenDialog = (target: DialogHistory) =>
+  !!settings.value &&
+  target.guildId === selectedGuild.value?.id &&
+  target.feature === activeFeature.value &&
+  target.platform === activePlatform.value &&
+  (!target.source ||
+    (target.kind === 'notification'
+      ? notificationRows.value.some((row) => row.source === target.source)
+      : activeVerification.value.some(
+          (item) => item.sourceId === target.source
+        )));
+const syncPane = () => {
+  const state = window.history.state;
+  const target: DialogHistory | undefined = state?.settingsDialog;
+  if (!target) closeDialog();
+  // iOS 往前滑會先顯示對話框開著的截圖，不開回來就會閃一下又消失；草稿關閉時沒清掉，直接沿用
+  else if (!dialog.value && canReopenDialog(target))
+    dialog.value = { kind: target.kind, source: target.source };
+  mobilePane.value = state?.settingsPane === 'content' ? 'content' : 'nav';
+};
+watch(dialog, (current) => {
+  const inHistory = !!window.history.state?.settingsDialog;
+  if (current && (inHistory || isMobile.value)) {
+    const entry = {
+      ...window.history.state,
+      settingsDialog: {
+        ...current,
+        guildId: selectedGuild.value?.id,
+        feature: activeFeature.value,
+        platform: activePlatform.value
+      } satisfies DialogHistory
+    };
+    // 對話框裡改開另一個對話框（例如通知換成新增爬蟲）只更新同一筆
+    if (inHistory) window.history.replaceState(entry, '');
+    else window.history.pushState(entry, '');
+  }
+  // 用叉叉、取消或儲存關掉時，把那筆歷史退掉，免得下一次返回沒反應
+  else if (!current && inHistory) window.history.back();
+});
+
+// 手機切到別的 App 時，系統可能回收背景分頁，切回來就整頁重載；記住目前位置和對話框草稿，重載後還原
+const viewStateKey = 'settingsView';
+type ViewState = {
+  guildId: string;
+  feature: Feature;
+  platform: Platform;
+  pane: 'nav' | 'content';
+  dialog: DialogState | null;
+  drafts: {
+    youtube: YouTubeForm;
+    twitch: TwitchForm;
+    twitcasting: TwitCastingForm;
+    chzzk: ChzzkForm;
+    crawler: Record<Platform, string>;
+    verification: { source: string; roleId: string };
+    verificationRole: string;
+    probeVideos: Record<string, string>;
+  };
+};
+// 還原期間會先被重設成預設值，這時不能把存好的狀態蓋掉
+let restoringView = false;
+watch(
+  (): ViewState | null =>
+    selectedGuild.value && {
+      guildId: selectedGuild.value.id,
+      feature: activeFeature.value,
+      platform: activePlatform.value,
+      pane: mobilePane.value,
+      dialog: dialog.value,
+      drafts: {
+        youtube: youtubeDraft.value,
+        twitch: twitchDraft.value,
+        twitcasting: twitcastingDraft.value,
+        chzzk: chzzkDraft.value,
+        crawler: newCrawlerSources.value,
+        verification: newVerification.value,
+        verificationRole: verificationRole.value,
+        probeVideos: probeVideos.value
+      }
+    },
+  (view) => {
+    if (view && !restoringView)
+      sessionStorage.setItem(viewStateKey, JSON.stringify(view));
+  },
+  { deep: true }
+);
+const restoreView = async () => {
+  let view: ViewState | null = null;
+  try {
+    view = JSON.parse(sessionStorage.getItem(viewStateKey) || 'null');
+  } catch {
+    return;
+  }
+  const guild = view && guilds.value.find((item) => item.id === view.guildId);
+  if (!view || !guild) return;
+  restoringView = true;
+  try {
+    // selectGuild 會先同步重設成一般設定再去載入設定，所以要在它之後蓋回來
+    const selecting = selectGuild(guild);
+    activeFeature.value = view.feature;
+    activePlatform.value = view.platform;
+    if (view.pane === 'content') showContent();
+    else mobilePane.value = 'nav';
+    await selecting;
+    // 對話框裡的頻道與身分組選單要等設定載入完才有選項
+    if (!view.dialog || !view.drafts || !settings.value) return;
+    if (selectedGuild.value?.id !== guild.id) return;
+    youtubeDraft.value = view.drafts.youtube;
+    twitchDraft.value = view.drafts.twitch;
+    twitcastingDraft.value = view.drafts.twitcasting;
+    chzzkDraft.value = view.drafts.chzzk;
+    newCrawlerSources.value = view.drafts.crawler;
+    newVerification.value = view.drafts.verification;
+    verificationRole.value = view.drafts.verificationRole;
+    probeVideos.value = view.drafts.probeVideos;
+    dialog.value = view.dialog;
+  } finally {
+    restoringView = false;
+  }
+};
+
+const openFeature = (feature: Feature, platform?: Platform) => {
+  activeFeature.value = feature;
+  if (platform) activePlatform.value = platform;
+  showContent();
 };
 
 const runMutation = async (
@@ -2082,13 +1900,18 @@ const reloadAfterMutation = async (reply: AdminMutationReply | null) => {
     await loadSettings();
 };
 
+const openCrawlerDialog = (source = '') => {
+  newCrawlerSources.value[activePlatform.value] = source;
+  dialog.value = { kind: 'crawler' };
+};
+
 const openCrawler = (platform: Platform, source: string) => {
   activePlatform.value = platform;
   activeFeature.value = 'crawler';
-  newCrawlerSources.value[platform] = source;
+  openCrawlerDialog(source);
 };
 
-const addCrawler = async () => {
+const submitCrawler = async () => {
   const platform = activePlatform.value;
   const key = `crawler:${platform}:new`;
   const source = newCrawlerSources.value[platform];
@@ -2097,8 +1920,10 @@ const addCrawler = async () => {
     `${platform}-crawler.add` as AdminMutationAction,
     { source }
   );
-  if (reply?.state === 'applied' || reply?.state === 'pending')
+  if (reply?.state === 'applied' || reply?.state === 'pending') {
     newCrawlerSources.value[platform] = '';
+    closeDialog();
+  }
   await reloadAfterMutation(reply);
 };
 
@@ -2114,28 +1939,35 @@ const removeCrawler = async (sourceId: string) => {
   await reloadAfterMutation(reply);
 };
 
-const addVerification = async () => {
+const openVerificationDialog = (sourceId?: string) => {
+  if (sourceId)
+    verificationRole.value =
+      activeVerification.value.find((item) => item.sourceId === sourceId)
+        ?.roleId || '';
+  else newVerification.value = { source: '', roleId: '' };
+  dialog.value = { kind: 'verification', source: sourceId };
+};
+
+const submitVerification = async () => {
   const platform = activePlatform.value as 'youtube' | 'twitch';
+  const sourceId = dialog.value?.source;
   const reply = await runMutation(
-    `verification:${platform}:new`,
+    `verification:${platform}:${sourceId || 'new'}`,
     `${platform}-verification.upsert` as AdminMutationAction,
-    { ...newVerification.value }
+    sourceId
+      ? { source: sourceId, roleId: verificationRole.value }
+      : { ...newVerification.value }
   );
+  if (reply?.state === 'applied' || reply?.state === 'pending') closeDialog();
   await reloadAfterMutation(reply);
 };
 
-const saveVerification = async (item: VerificationItem) => {
-  const platform = activePlatform.value as 'youtube' | 'twitch';
-  const reply = await runMutation(
-    `verification:${platform}:${item.sourceId}`,
-    `${platform}-verification.upsert` as AdminMutationAction,
-    { source: item.sourceId, roleId: item.roleId }
-  );
-  await reloadAfterMutation(reply);
-};
-
-const removeVerification = async (sourceId: string) => {
-  if (!window.confirm(`確定要移除 ${activePlatformLabel.value} 驗證設定？`))
+const removeVerificationFromDialog = async () => {
+  const sourceId = dialog.value?.source;
+  if (
+    !sourceId ||
+    !window.confirm(`確定要移除 ${activePlatformLabel.value} 驗證設定？`)
+  )
     return;
   const platform = activePlatform.value as 'youtube' | 'twitch';
   const reply = await runMutation(
@@ -2143,6 +1975,7 @@ const removeVerification = async (sourceId: string) => {
     `${platform}-verification.remove` as AdminMutationAction,
     { sourceId }
   );
+  if (reply?.state === 'applied' || reply?.state === 'pending') closeDialog();
   if (reply?.state === 'pending' && settings.value) {
     const item = settings.value.verification[platform].find(
       (entry) => entry.sourceId === sourceId
@@ -2153,11 +1986,11 @@ const removeVerification = async (sourceId: string) => {
   await reloadAfterMutation(reply);
 };
 
-const setProbeVideo = async (item: VerificationItem) => {
+const setProbeVideo = async (sourceId: string) => {
   const reply = await runMutation(
-    `verification:youtube:${item.sourceId}`,
+    `verification:youtube:${sourceId}`,
     'youtube-verification.set-probe-video',
-    { sourceId: item.sourceId, video: probeVideos.value[item.sourceId] }
+    { sourceId, video: probeVideos.value[sourceId] }
   );
   await reloadAfterMutation(reply);
 };
@@ -2174,8 +2007,7 @@ const useAutomaticProbe = async (sourceId: string) => {
 const refreshAddedNotification = async (
   platform: 'youtube' | 'twitch' | 'twitcasting' | 'chzzk',
   source: string,
-  selectionVersion: number,
-  submitted: YouTubeForm | TwitchForm | TwitCastingForm | ChzzkForm
+  selectionVersion: number
 ) => {
   const token = discordToken();
   const guild = selectedGuild.value;
@@ -2199,7 +2031,7 @@ const refreshAddedNotification = async (
       youtubeForms.value = youtubeForms.value.filter(
         (entry) => entry.source !== source
       );
-      youtubeForms.value.push({
+      youtubeForms.value.unshift({
         source: item.sourceId,
         sourceName: item.sourceName || item.sourceId,
         streamChannelId: item.streamChannelId,
@@ -2213,17 +2045,15 @@ const refreshAddedNotification = async (
           settings.value.notifications.youtube.filter(
             (entry) => entry.sourceId !== source
           );
-        settings.value.notifications.youtube.push(item);
+        settings.value.notifications.youtube.unshift(item);
       }
-      if (JSON.stringify(newYouTube.value) === JSON.stringify(submitted))
-        newYouTube.value = emptyYouTube();
     } else if (platform === 'twitch') {
       const item =
         notification as GuildSettingsSnapshot['notifications']['twitch'][number];
       twitchForms.value = twitchForms.value.filter(
         (entry) => entry.source !== source
       );
-      twitchForms.value.push({
+      twitchForms.value.unshift({
         source: item.sourceId,
         sourceName: item.sourceName || item.sourceId,
         channelId: item.channelId,
@@ -2237,17 +2067,15 @@ const refreshAddedNotification = async (
           settings.value.notifications.twitch.filter(
             (entry) => entry.sourceId !== source
           );
-        settings.value.notifications.twitch.push(item);
+        settings.value.notifications.twitch.unshift(item);
       }
-      if (JSON.stringify(newTwitch.value) === JSON.stringify(submitted))
-        newTwitch.value = emptyTwitch();
     } else if (platform === 'twitcasting') {
       const item =
         notification as GuildSettingsSnapshot['notifications']['twitcasting'][number];
       twitcastingForms.value = twitcastingForms.value.filter(
         (entry) => entry.source !== source
       );
-      twitcastingForms.value.push({
+      twitcastingForms.value.unshift({
         source: item.sourceId,
         sourceName: item.sourceName || item.sourceId,
         channelId: item.channelId,
@@ -2259,17 +2087,15 @@ const refreshAddedNotification = async (
           settings.value.notifications.twitcasting.filter(
             (entry) => entry.sourceId !== source
           );
-        settings.value.notifications.twitcasting.push(item);
+        settings.value.notifications.twitcasting.unshift(item);
       }
-      if (JSON.stringify(newTwitCasting.value) === JSON.stringify(submitted))
-        newTwitCasting.value = emptyTwitCasting();
     } else {
       const item =
         notification as GuildSettingsSnapshot['notifications']['chzzk'][number];
       chzzkForms.value = chzzkForms.value.filter(
         (entry) => entry.source !== source
       );
-      chzzkForms.value.push({
+      chzzkForms.value.unshift({
         source: item.sourceId,
         sourceName: item.sourceName || item.sourceId,
         channelId: item.channelId,
@@ -2282,10 +2108,8 @@ const refreshAddedNotification = async (
           settings.value.notifications.chzzk.filter(
             (entry) => entry.sourceId !== source
           );
-        settings.value.notifications.chzzk.push(item);
+        settings.value.notifications.chzzk.unshift(item);
       }
-      if (JSON.stringify(newChzzk.value) === JSON.stringify(submitted))
-        newChzzk.value = emptyChzzk();
     }
   } catch {
     if (
@@ -2299,8 +2123,10 @@ const refreshAddedNotification = async (
   }
 };
 
-const saveYouTube = async (item: YouTubeForm) => {
-  const isNew = item === newYouTube.value;
+const saveYouTube = async (
+  item: YouTubeForm,
+  isNew: boolean
+): Promise<boolean> => {
   const formKey = isNew ? 'youtube:new' : `youtube:${item.source}`;
   const guildId = selectedGuild.value?.id;
   const submitted: YouTubeForm = {
@@ -2322,17 +2148,16 @@ const saveYouTube = async (item: YouTubeForm) => {
   );
   if (reply?.state !== 'applied') {
     if (isNew && guildId) setFormLoading(guildId, formKey, false);
-    return;
+    return false;
   }
   if (isNew) {
     await refreshAddedNotification(
       'youtube',
       String(reply.arguments?.sourceId || submitted.source),
-      selectionVersion,
-      submitted
+      selectionVersion
     );
     if (guildId) setFormLoading(guildId, formKey, false);
-    return;
+    return true;
   }
   const stored = settings.value?.notifications.youtube.find(
     (entry) => entry.sourceId === submitted.source
@@ -2344,6 +2169,11 @@ const saveYouTube = async (item: YouTubeForm) => {
       createEvent: submitted.createEvent,
       messages: submitted.messages
     });
+  const form = youtubeForms.value.find(
+    (entry) => entry.source === submitted.source
+  );
+  if (form) Object.assign(form, submitted);
+  return true;
 };
 const removeYouTube = async (source: string) => {
   const reply = await runMutation(
@@ -2351,7 +2181,7 @@ const removeYouTube = async (source: string) => {
     'youtube-notification.remove',
     { source }
   );
-  if (reply?.state !== 'applied') return;
+  if (reply?.state !== 'applied') return false;
   youtubeForms.value = youtubeForms.value.filter(
     (item) => item.source !== source
   );
@@ -2360,14 +2190,17 @@ const removeYouTube = async (source: string) => {
       settings.value.notifications.youtube.filter(
         (item) => item.sourceId !== source
       );
+  return true;
 };
 const twitchMessages = (item: TwitchForm): Record<string, string> => ({
   start: item.startMessage,
   end: item.endMessage,
   change: item.changeMessage
 });
-const saveTwitch = async (item: TwitchForm) => {
-  const isNew = item === newTwitch.value;
+const saveTwitch = async (
+  item: TwitchForm,
+  isNew: boolean
+): Promise<boolean> => {
   const formKey = isNew ? 'twitch:new' : `twitch:${item.source}`;
   const guildId = selectedGuild.value?.id;
   const submitted = { ...item };
@@ -2384,17 +2217,16 @@ const saveTwitch = async (item: TwitchForm) => {
   );
   if (reply?.state !== 'applied') {
     if (isNew && guildId) setFormLoading(guildId, formKey, false);
-    return;
+    return false;
   }
   if (isNew) {
     await refreshAddedNotification(
       'twitch',
       String(reply.arguments?.sourceId || submitted.source),
-      selectionVersion,
-      submitted
+      selectionVersion
     );
     if (guildId) setFormLoading(guildId, formKey, false);
-    return;
+    return true;
   }
   const stored = settings.value?.notifications.twitch.find(
     (entry) => entry.sourceId === submitted.source
@@ -2404,6 +2236,11 @@ const saveTwitch = async (item: TwitchForm) => {
       channelId: submitted.channelId,
       messages: twitchMessages(submitted)
     });
+  const form = twitchForms.value.find(
+    (entry) => entry.source === submitted.source
+  );
+  if (form) Object.assign(form, submitted);
+  return true;
 };
 const removeTwitch = async (source: string) => {
   const reply = await runMutation(
@@ -2411,7 +2248,7 @@ const removeTwitch = async (source: string) => {
     'twitch-notification.remove',
     { source }
   );
-  if (reply?.state !== 'applied') return;
+  if (reply?.state !== 'applied') return false;
   twitchForms.value = twitchForms.value.filter(
     (item) => item.source !== source
   );
@@ -2420,9 +2257,12 @@ const removeTwitch = async (source: string) => {
       settings.value.notifications.twitch.filter(
         (item) => item.sourceId !== source
       );
+  return true;
 };
-const saveTwitCasting = async (item: TwitCastingForm) => {
-  const isNew = item === newTwitCasting.value;
+const saveTwitCasting = async (
+  item: TwitCastingForm,
+  isNew: boolean
+): Promise<boolean> => {
   const formKey = isNew ? 'twitcasting:new' : `twitcasting:${item.source}`;
   const guildId = selectedGuild.value?.id;
   const submitted = { ...item };
@@ -2439,17 +2279,16 @@ const saveTwitCasting = async (item: TwitCastingForm) => {
   );
   if (reply?.state !== 'applied') {
     if (isNew && guildId) setFormLoading(guildId, formKey, false);
-    return;
+    return false;
   }
   if (isNew) {
     await refreshAddedNotification(
       'twitcasting',
       String(reply.arguments?.sourceId || submitted.source),
-      selectionVersion,
-      submitted
+      selectionVersion
     );
     if (guildId) setFormLoading(guildId, formKey, false);
-    return;
+    return true;
   }
   const stored = settings.value?.notifications.twitcasting.find(
     (entry) => entry.sourceId === submitted.source
@@ -2459,6 +2298,11 @@ const saveTwitCasting = async (item: TwitCastingForm) => {
       channelId: submitted.channelId,
       startMessage: submitted.startMessage
     });
+  const form = twitcastingForms.value.find(
+    (entry) => entry.source === submitted.source
+  );
+  if (form) Object.assign(form, submitted);
+  return true;
 };
 const removeTwitCasting = async (source: string) => {
   const reply = await runMutation(
@@ -2466,7 +2310,7 @@ const removeTwitCasting = async (source: string) => {
     'twitcasting-notification.remove',
     { source }
   );
-  if (reply?.state !== 'applied') return;
+  if (reply?.state !== 'applied') return false;
   twitcastingForms.value = twitcastingForms.value.filter(
     (item) => item.source !== source
   );
@@ -2475,13 +2319,13 @@ const removeTwitCasting = async (source: string) => {
       settings.value.notifications.twitcasting.filter(
         (item) => item.sourceId !== source
       );
+  return true;
 };
 const chzzkMessages = (item: ChzzkForm): Record<string, string> => ({
   start: item.startMessage,
   end: item.endMessage
 });
-const saveChzzk = async (item: ChzzkForm) => {
-  const isNew = item === newChzzk.value;
+const saveChzzk = async (item: ChzzkForm, isNew: boolean): Promise<boolean> => {
   const formKey = isNew ? 'chzzk:new' : `chzzk:${item.source}`;
   const guildId = selectedGuild.value?.id;
   const submitted = { ...item };
@@ -2498,17 +2342,16 @@ const saveChzzk = async (item: ChzzkForm) => {
   );
   if (reply?.state !== 'applied') {
     if (isNew && guildId) setFormLoading(guildId, formKey, false);
-    return;
+    return false;
   }
   if (isNew) {
     await refreshAddedNotification(
       'chzzk',
       String(reply.arguments?.sourceId || submitted.source),
-      selectionVersion,
-      submitted
+      selectionVersion
     );
     if (guildId) setFormLoading(guildId, formKey, false);
-    return;
+    return true;
   }
   const stored = settings.value?.notifications.chzzk.find(
     (entry) => entry.sourceId === submitted.source
@@ -2518,6 +2361,11 @@ const saveChzzk = async (item: ChzzkForm) => {
       channelId: submitted.channelId,
       messages: chzzkMessages(submitted)
     });
+  const form = chzzkForms.value.find(
+    (entry) => entry.source === submitted.source
+  );
+  if (form) Object.assign(form, submitted);
+  return true;
 };
 const removeChzzk = async (source: string) => {
   const reply = await runMutation(
@@ -2525,109 +2373,110 @@ const removeChzzk = async (source: string) => {
     'chzzk-notification.remove',
     { source }
   );
-  if (reply?.state !== 'applied') return;
+  if (reply?.state !== 'applied') return false;
   chzzkForms.value = chzzkForms.value.filter((item) => item.source !== source);
   if (settings.value)
-    settings.value.notifications.chzzk = settings.value.notifications.chzzk.filter(
-      (item) => item.sourceId !== source
-    );
+    settings.value.notifications.chzzk =
+      settings.value.notifications.chzzk.filter(
+        (item) => item.sourceId !== source
+      );
+  return true;
 };
 const reloadAfterUnknown = async () => {
   await loadSettings();
   if (!settingsError.value) mutationReply.value = null;
 };
 
-const startGuildDrag = (event: PointerEvent) => {
-  const list = guildList.value;
-  if (!list || event.button !== 0) return;
-  dragStart = {
-    x: event.clientX,
-    y: event.clientY,
-    left: list.scrollLeft,
-    top: list.scrollTop
+const copyForm = <T,>(item: T): T => JSON.parse(JSON.stringify(item)) as T;
+const openNotificationDialog = (source?: string) => {
+  const pick = <T extends { source: string }>(
+    forms: T[],
+    empty: () => T
+  ): T | undefined => {
+    if (!source) return empty();
+    const item = forms.find((entry) => entry.source === source);
+    return item && copyForm(item);
   };
-  guildDragged = false;
-  dragPointerId = event.pointerId;
-};
-const dragGuildList = (event: PointerEvent) => {
-  const list = guildList.value;
-  if (!list || !dragStart) return;
-  if ((event.buttons & 1) === 0) {
-    stopGuildDrag();
-    return;
-  }
-  if (
-    Math.abs(event.clientX - dragStart.x) > 4 ||
-    Math.abs(event.clientY - dragStart.y) > 4
-  )
-    guildDragged = true;
-  if (guildDragged && !list.hasPointerCapture(event.pointerId)) {
-    try {
-      list.setPointerCapture(event.pointerId);
-    } catch {
-      stopGuildDrag();
-      return;
+  switch (activePlatform.value) {
+    case 'youtube': {
+      const draft = pick(youtubeForms.value, emptyYouTube);
+      if (!draft) return;
+      youtubeDraft.value = draft;
+      break;
+    }
+    case 'twitch': {
+      const draft = pick(twitchForms.value, emptyTwitch);
+      if (!draft) return;
+      twitchDraft.value = draft;
+      break;
+    }
+    case 'twitcasting': {
+      const draft = pick(twitcastingForms.value, emptyTwitCasting);
+      if (!draft) return;
+      twitcastingDraft.value = draft;
+      break;
+    }
+    case 'chzzk': {
+      const draft = pick(chzzkForms.value, emptyChzzk);
+      if (!draft) return;
+      chzzkDraft.value = draft;
+      break;
     }
   }
-  list.scrollLeft = dragStart.left - (event.clientX - dragStart.x);
-  list.scrollTop = dragStart.top - (event.clientY - dragStart.y);
+  dialog.value = { kind: 'notification', source };
 };
-const stopGuildDrag = () => {
-  const list = guildList.value;
-  if (list && dragPointerId !== null && list.hasPointerCapture(dragPointerId))
-    list.releasePointerCapture(dragPointerId);
-  dragStart = null;
-  dragPointerId = null;
+const submitNotification = async () => {
+  const isNew = !dialog.value?.source;
+  const save = {
+    youtube: () => saveYouTube(youtubeDraft.value, isNew),
+    twitch: () => saveTwitch(twitchDraft.value, isNew),
+    twitcasting: () => saveTwitCasting(twitcastingDraft.value, isNew),
+    chzzk: () => saveChzzk(chzzkDraft.value, isNew)
+  }[activePlatform.value];
+  if (await save()) closeDialog();
 };
-const cancelGuildClick = (event: MouseEvent) => {
-  if (!guildDragged) return;
-  event.preventDefault();
-  event.stopPropagation();
-  guildDragged = false;
-};
-const scrollGuildList = (event: WheelEvent) => {
-  const list = guildList.value;
-  if (!list) return;
-  if (list.scrollWidth > list.clientWidth) {
-    event.preventDefault();
-    list.scrollLeft += event.deltaY || event.deltaX;
-  }
-};
-const updateGuildScrollHints = () => {
-  const list = guildList.value;
-  if (!list) return;
-  const horizontal = list.scrollWidth > list.clientWidth;
-  const position = horizontal ? list.scrollLeft : list.scrollTop;
-  const maximum = horizontal
-    ? list.scrollWidth - list.clientWidth
-    : list.scrollHeight - list.clientHeight;
-  canScrollBackward.value = position > 0;
-  canScrollForward.value = position < maximum - 1;
+const removeNotification = async () => {
+  const source = dialog.value?.source;
+  if (
+    !source ||
+    !window.confirm(`確定要移除 ${activePlatformLabel.value} 通知？`)
+  )
+    return;
+  const remove = {
+    youtube: removeYouTube,
+    twitch: removeTwitch,
+    twitcasting: removeTwitCasting,
+    chzzk: removeChzzk
+  }[activePlatform.value];
+  if (await remove(source)) closeDialog();
 };
 
-const finishGuildDrag = () => stopGuildDrag();
-
-watch(mutationReply, (reply) => {
-  clearTimeout(toastTimer);
-  if (reply && reply.state !== 'unknown' && reply.state !== 'timeout')
-    toastTimer = setTimeout(() => (mutationReply.value = null), 4000);
-});
-watch(availablePlatforms, (platforms) => {
-  if (!platforms.some((platform) => platform.id === activePlatform.value))
-    activePlatform.value = platforms[0]?.id || 'youtube';
-});
+// showModal() 會讓頁面其他部分變成 inert，toast 要跟著進 top layer 才不會被遮罩蓋住
+watch(
+  mutationReply,
+  (reply) => {
+    clearTimeout(toastTimer);
+    const element = toast.value;
+    if (element?.matches(':popover-open')) element.hidePopover();
+    if (!reply) return;
+    // 對話框開著時 toast 的「重新載入設定」按鈕點不到；結果不確定時草稿也該丟掉
+    if (reply.state === 'unknown' || reply.state === 'timeout') closeDialog();
+    element?.showPopover();
+    if (reply.state !== 'unknown' && reply.state !== 'timeout')
+      toastTimer = setTimeout(() => (mutationReply.value = null), 4000);
+  },
+  { flush: 'post' }
+);
 onMounted(() => {
   loadGuilds();
-  window.addEventListener('pointerup', finishGuildDrag);
-  window.addEventListener('blur', finishGuildDrag);
-  window.addEventListener('resize', updateGuildScrollHints);
+  mobileQuery.addEventListener('change', syncMobile);
+  window.addEventListener('popstate', syncPane);
 });
 onBeforeUnmount(() => {
   settingsRequest?.abort();
   clearTimeout(toastTimer);
-  window.removeEventListener('pointerup', finishGuildDrag);
-  window.removeEventListener('blur', finishGuildDrag);
-  window.removeEventListener('resize', updateGuildScrollHints);
+  mobileQuery.removeEventListener('change', syncMobile);
+  window.removeEventListener('popstate', syncPane);
 });
 </script>
 
@@ -2636,160 +2485,249 @@ onBeforeUnmount(() => {
 @reference '../index.css';
 
 .settings-page {
-  @apply min-h-[calc(100vh-7rem)] bg-neutral-900 lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:overflow-hidden;
+  @apply h-dvh overflow-hidden bg-neutral-800;
 }
 
-.settings-page > .mb-6,
-.settings-page > .rounded,
-.settings-page > p {
-  @apply mx-4 mt-4;
+.login-gate {
+  @apply mx-auto max-w-2xl p-6;
 }
 
-.settings-layout {
-  @apply grid min-h-[calc(100vh-7rem)] content-start grid-cols-[minmax(0,1fr)] lg:h-full lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)];
+.settings-shell {
+  @apply relative grid h-full grid-cols-[72px_240px_minmax(0,1fr)] overflow-hidden;
 }
 
-.settings-sidebar {
-  @apply min-w-0 border-b border-zinc-700 bg-neutral-800 lg:h-full lg:overflow-hidden lg:border-r lg:border-b-0;
+/* 第一欄：伺服器頭像列 */
+.guild-rail {
+  @apply flex min-h-0 flex-col items-center gap-2 bg-zinc-950 py-3;
 }
 
-.sidebar-heading {
-  @apply border-b border-zinc-700 p-4;
-}
-
-.guild-list-wrap {
-  @apply relative min-h-0 lg:h-[calc(100%-6.75rem)];
-}
-
-.guild-list {
-  @apply flex w-full max-w-full cursor-grab gap-2 overflow-auto p-3 select-none active:cursor-grabbing lg:h-full lg:flex-col;
-
-  scrollbar-width: none;
-  touch-action: pan-x pan-y;
-}
-
-.guild-list::-webkit-scrollbar {
-  display: none;
-}
-
-.guild-card {
-  @apply w-64 min-w-64 shrink-0 lg:w-full lg:min-w-0;
-}
-
-.guild-card .mt-3 {
-  @apply mt-1;
-}
-
-.guild-scroll-hint {
-  @apply pointer-events-none absolute z-10 flex h-8 w-8 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900/90 text-zinc-300 shadow;
-}
-
-.guild-scroll-hint-back {
-  @apply top-1/2 left-3 -translate-y-1/2 lg:top-3 lg:left-1/2 lg:-translate-x-1/2 lg:translate-y-0;
-}
-
-.guild-scroll-hint-forward {
-  @apply top-1/2 right-3 -translate-y-1/2 lg:top-auto lg:right-auto lg:bottom-3 lg:left-1/2 lg:-translate-x-1/2 lg:translate-y-0;
-}
-
-.settings-content {
-  @apply min-w-0 p-4 lg:h-full lg:overflow-y-auto lg:p-6;
+.guild-rail-list {
+  @apply flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto py-1;
 
   scrollbar-width: none;
 }
 
-.settings-content::-webkit-scrollbar {
+.guild-rail-list::-webkit-scrollbar {
   display: none;
 }
 
-.settings-main-tabs {
-  @apply -mx-4 flex overflow-x-auto border-y border-zinc-700 bg-neutral-800 px-4 lg:-mx-6 lg:px-6;
+.rail-divider {
+  @apply h-0.5 w-8 shrink-0 rounded bg-zinc-700;
 }
 
-.settings-main-tabs button {
-  @apply min-h-11 shrink-0 border-b-2 border-transparent px-4 text-sm font-medium text-zinc-400;
+.rail-button,
+.guild-icon {
+  @apply relative flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-neutral-800 text-zinc-200 transition-[border-radius,background-color] duration-150;
+  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white;
 }
 
-.settings-main-tabs button.active {
-  @apply border-indigo-400 bg-zinc-900 text-white;
+.rail-button:hover,
+.guild-icon:hover,
+.guild-icon.selected {
+  @apply rounded-2xl;
 }
 
-.settings-sub-tabs {
-  @apply -mx-4 mb-5 flex min-h-10 overflow-x-auto border-b border-zinc-700 bg-zinc-900 px-4 lg:-mx-6 lg:px-6;
+.rail-button:hover {
+  @apply bg-indigo-600 text-white;
 }
 
-.settings-sub-tabs button {
-  @apply shrink-0 border-b-2 border-transparent px-4 text-sm text-zinc-400;
+.rail-invite {
+  @apply text-teal-400;
 }
 
-.settings-sub-tabs button.active {
-  @apply border-indigo-400 font-medium text-indigo-200;
+.rail-invite:hover {
+  @apply bg-teal-600;
 }
 
-.settings-section {
-  @apply mb-6 rounded border border-zinc-700 bg-zinc-900 p-5;
+.guild-icon img {
+  @apply h-full w-full rounded-[inherit] object-cover;
 }
 
-.settings-toast {
-  @apply fixed right-4 bottom-4 z-50 max-w-[calc(100vw-2rem)] shadow-lg;
+.guild-icon span {
+  @apply font-bold;
 }
 
-.settings-toast-enter-active,
-.settings-toast-leave-active {
-  transition:
-    opacity 150ms ease,
-    transform 150ms ease;
+.guild-icon:hover,
+.guild-icon.selected {
+  @apply bg-indigo-600 text-white;
 }
 
-.settings-toast-enter-from,
-.settings-toast-leave-to {
-  opacity: 0;
-  transform: translateY(0.5rem);
+.guild-icon.not-installed {
+  @apply opacity-50 hover:opacity-80;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .settings-toast-enter-active,
-  .settings-toast-leave-active {
-    transition: none;
+/* 選中的伺服器左側白色指示條 */
+.guild-icon::before {
+  @apply absolute top-1/2 -left-3 h-0 w-1 -translate-y-1/2 rounded-r bg-white transition-[height] duration-150;
+
+  content: '';
+}
+
+.guild-icon:hover::before {
+  @apply h-5;
+}
+
+.guild-icon.selected::before {
+  @apply h-10;
+}
+
+/* 第二欄：功能列表 */
+.channel-sidebar {
+  @apply flex min-h-0 min-w-0 flex-col bg-neutral-900;
+}
+
+.sidebar-header {
+  @apply flex min-h-14 items-center justify-between gap-2 border-b border-zinc-950 px-4 py-2;
+}
+
+.sidebar-body {
+  @apply min-h-0 flex-1 overflow-y-auto px-2 py-3;
+}
+
+.sidebar-note {
+  @apply px-2 text-sm text-zinc-400;
+}
+
+.channel-list {
+  @apply grid gap-0.5;
+}
+
+.channel-category {
+  @apply mt-4 mb-1 px-2 text-xs font-bold text-zinc-400;
+}
+
+.channel-item {
+  @apply flex min-h-10 w-full items-center gap-2 rounded px-2 text-left text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200;
+  @apply focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-300;
+}
+
+.channel-item.active {
+  @apply bg-zinc-700/70 text-white;
+}
+
+.sidebar-footer {
+  @apply flex gap-4 border-t border-zinc-950 bg-zinc-950/40 px-4 py-3 text-xs;
+}
+
+.sidebar-footer a {
+  @apply text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline;
+}
+
+.icon-button {
+  @apply flex h-11 w-11 shrink-0 items-center justify-center rounded text-zinc-400 hover:bg-zinc-700 hover:text-white;
+  @apply focus-visible:outline-2 focus-visible:outline-indigo-300;
+}
+
+@media (width >= 48rem) {
+  .back-button {
+    display: none;
   }
 }
 
-.settings-section h2,
-.notification-form h3 {
-  @apply text-lg font-bold text-white;
+.icon-button.danger:hover {
+  @apply bg-red-900 text-red-100;
+}
+
+/* 第三欄：內容 */
+.settings-content {
+  @apply flex min-h-0 min-w-0 flex-col bg-neutral-800;
+}
+
+.content-header {
+  @apply flex min-h-14 shrink-0 items-center gap-2 border-b border-zinc-950 px-4 shadow-sm;
+}
+
+.content-body {
+  @apply min-h-0 flex-1 overflow-y-auto p-4 md:p-8;
+}
+
+.content-body > * {
+  @apply max-w-3xl;
 }
 
 .section-help {
-  @apply mt-1 text-sm text-zinc-400;
+  @apply text-sm text-zinc-400;
 }
 
-.settings-row {
-  @apply flex flex-wrap items-center justify-between gap-4 rounded border border-zinc-700 bg-neutral-800 p-4;
+.create-button {
+  @apply mt-4;
 }
 
-.settings-row strong {
-  @apply text-zinc-100;
+.list-title {
+  @apply mt-8 mb-2 text-sm font-bold text-zinc-300;
 }
 
-.settings-row p,
+.item-list {
+  @apply overflow-hidden rounded-lg border border-zinc-700 bg-neutral-900/60;
+}
+
+.item-list-head {
+  @apply hidden border-b border-zinc-700 px-4 py-2 text-xs font-bold text-zinc-400 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_18px] md:gap-4;
+}
+
+.item-row {
+  @apply grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-b border-zinc-700/60 px-4 py-3 text-left last:border-b-0;
+  @apply md:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_18px];
+}
+
+button.item-row {
+  @apply hover:bg-zinc-700/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-300;
+}
+
+div.item-row {
+  @apply md:grid-cols-[minmax(0,1fr)_auto];
+}
+
+.item-main {
+  @apply grid min-w-0;
+}
+
+.item-main strong {
+  @apply truncate font-medium text-zinc-100;
+}
+
+.item-main span,
+.item-meta {
+  @apply truncate text-sm text-zinc-400;
+}
+
+.item-meta {
+  @apply col-span-2 md:col-span-1;
+}
+
 .empty-note {
-  @apply mt-1 text-sm text-zinc-400;
+  @apply mt-3 text-sm text-zinc-400;
 }
 
-.verification-card {
-  @apply grid gap-3 rounded border border-zinc-700 bg-neutral-800 p-4;
+/* 對話框內的表單（slot 內容套用本元件的 scoped 樣式） */
+.dialog-form {
+  @apply grid gap-4;
 }
 
-.tier-role-list {
-  @apply grid gap-1 text-sm text-zinc-400;
+.dialog-inline-form {
+  @apply flex flex-wrap items-end gap-3;
+}
+
+.dialog-inline-form label {
+  @apply min-w-56 flex-1;
+}
+
+.dialog-actions {
+  @apply mt-2 flex flex-wrap justify-end gap-3 border-t border-zinc-700 pt-4;
+}
+
+.settings-toast {
+  @apply m-0 max-w-[calc(100vw-2rem)] rounded border-0 p-4 shadow-lg;
+
+  inset: auto 1rem 1rem auto;
 }
 
 .settings-grid {
-  @apply mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3;
+  @apply grid gap-4 md:grid-cols-2;
 }
 
 .settings-grid > .btn {
-  @apply justify-self-start md:col-span-2 xl:col-span-3;
+  @apply justify-self-start md:col-span-2;
 }
 
 label {
@@ -2824,15 +2762,34 @@ select.field {
   @apply flex min-h-11 items-center gap-2;
 }
 
-.wide {
-  @apply md:col-span-2 xl:col-span-3;
-}
-
-.notification-form {
-  @apply mt-4 rounded border border-zinc-700 p-4;
-}
-
 button:disabled {
   @apply cursor-not-allowed opacity-60;
+}
+
+/* 手機版：內容頁從右邊滑入，蓋住伺服器＋功能列表 */
+@media (width < 48rem) {
+  .settings-shell {
+    @apply grid-cols-[72px_minmax(0,1fr)];
+  }
+
+  .settings-content {
+    @apply absolute inset-0 z-10 shadow-2xl;
+
+    transform: translateX(100%);
+    transition: transform 250ms ease-out;
+  }
+
+  .settings-shell[data-pane='content'] .settings-content {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-content,
+  .rail-button,
+  .guild-icon,
+  .guild-icon::before {
+    transition: none;
+  }
 }
 </style>

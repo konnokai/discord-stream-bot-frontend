@@ -215,6 +215,7 @@ const fetchDiscordToken: AsyncFn<DiscordTokenResponse> = async () => {
   if (!returnedState || !expectedState || returnedState !== expectedState) {
     currentUrl.searchParams.delete('code');
     currentUrl.searchParams.delete('state');
+    currentUrl.searchParams.delete('iss');
     window.history.replaceState(
       {},
       '',
@@ -268,6 +269,7 @@ const fetchDiscordToken: AsyncFn<DiscordTokenResponse> = async () => {
   } finally {
     currentUrl.searchParams.delete('code');
     currentUrl.searchParams.delete('state');
+    currentUrl.searchParams.delete('iss');
     window.history.replaceState(
       {},
       '',

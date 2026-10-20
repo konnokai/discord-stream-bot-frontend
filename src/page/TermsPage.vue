@@ -1,6 +1,6 @@
 <template>
   <main class="mx-auto max-w-4xl p-1 leading-7 sm:p-5">
-    <a href="/" data-spa-link class="flex text-indigo-300">
+    <a href="/" data-spa-link data-spa-back class="flex text-indigo-300">
       <svg
         class="h-6 w-6"
         fill="none"

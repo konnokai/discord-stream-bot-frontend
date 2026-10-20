@@ -1,21 +1,22 @@
 <template>
-  <Header />
-  <div class="h-14"></div>
-  <main
-    :class="currentPath === '/settings' ? 'w-full' : 'container mx-auto p-4'"
-  >
-    <PrivacyPage v-if="currentPath === '/privacy'" />
-    <TermsPage v-else-if="currentPath === '/terms'" />
-    <SettingsPage v-else-if="currentPath === '/settings'" />
-    <Page404 v-else-if="currentPath !== '/'" />
-    <template v-else>
-      <HomePage />
-      <div class="my-12 border-t border-zinc-700 pt-12">
-        <VerifyWindow />
-      </div>
-    </template>
-  </main>
-  <Footer />
+  <!-- 設定頁仿 Discord 佔滿整個視窗，Header/Footer 的連結改放在頁內 -->
+  <SettingsPage v-if="currentPath === '/settings'" />
+  <template v-else>
+    <Header />
+    <div class="h-14"></div>
+    <main class="container mx-auto p-4">
+      <PrivacyPage v-if="currentPath === '/privacy'" />
+      <TermsPage v-else-if="currentPath === '/terms'" />
+      <Page404 v-else-if="currentPath !== '/'" />
+      <template v-else>
+        <HomePage />
+        <div class="my-12 border-t border-zinc-700 pt-12">
+          <VerifyWindow />
+        </div>
+      </template>
+    </main>
+    <Footer />
+  </template>
 </template>
 
 <script setup lang="ts">
@@ -53,12 +54,19 @@ const handleNavigation = (event: MouseEvent) => {
   const anchor = element?.closest<HTMLAnchorElement>('a[data-spa-link]');
   if (!anchor || anchor.target || anchor.hasAttribute('download')) return;
 
+  // 從站內點進來的才回上一頁；直接開網址的沒有上一頁可回，照 href 走
+  if (anchor.hasAttribute('data-spa-back') && window.history.state?.spa) {
+    event.preventDefault();
+    window.history.back();
+    return;
+  }
+
   const target = new URL(anchor.href);
   if (target.origin !== window.location.origin) return;
 
   event.preventDefault();
   window.history.pushState(
-    {},
+    { spa: true },
     '',
     `${target.pathname}${target.search}${target.hash}`
   );

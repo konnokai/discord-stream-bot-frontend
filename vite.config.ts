@@ -10,7 +10,8 @@ export default defineConfig({
     //   cert: fs.readFileSync(`${__dirname}/src/assets/localhost.pem`)
     // },
     host: '0.0.0.0',
-    port: 3333
+    port: 3333,
+    allowedHosts: ['.konnokai.me', 'localhost', 'dev-dcbot.konnokai.me']
   },
   resolve: {
     alias: {

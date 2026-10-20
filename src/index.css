@@ -5,6 +5,15 @@ html {
   @apply text-zinc-300;
 }
 
+/* iOS Safari 遇到小於 16px 的輸入框，focus 時會自動放大頁面 */
+@media (width < 48rem) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
+
 a:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
@@ -104,7 +113,8 @@ a:focus-visible {
   @apply shadow;
   @apply flex;
   @apply fixed;
-  @apply top-6;
+  @apply z-[60];
+  @apply top-20;
   @apply left-1/2;
   @apply -translate-x-1/2;
   @apply px-5;
@@ -119,12 +129,12 @@ a:focus-visible {
 
 .toast-enter-from,
 .toast-leave-to {
-  top: 0;
+  @apply top-14 opacity-0;
 }
 
 .toast-leave-from,
 .toast-enter-to {
-  @apply top-6;
+  @apply top-20;
 }
 
 .layout {
