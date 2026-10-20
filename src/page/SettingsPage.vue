@@ -65,7 +65,9 @@
               :src="`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=96`"
               alt=""
             />
-            <span v-else aria-hidden="true">{{ guild.name.slice(0, 1) }}</span>
+            <span v-else aria-hidden="true">
+              {{ guildInitials(guild.name) }}
+            </span>
           </button>
         </div>
         <a
@@ -227,6 +229,7 @@
       >
         <header class="content-header">
           <button
+            ref="backButton"
             type="button"
             class="icon-button back-button"
             aria-label="返回功能列表"
@@ -1096,7 +1099,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import {
+  computed,
+  inject,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch
+} from 'vue';
 import {
   ArrowLeft,
   ChevronRight,
@@ -1419,6 +1430,22 @@ const tierRoleNames = (item: VerificationItem) =>
   Object.entries(item.tierRoleIds || {}).map(
     ([tier, roleId]) => `層級 ${Number(tier) / 1000}：${roleName(roleId)}`
   );
+// 只取第一個字時，同字首的伺服器分不出來；比照 Discord 取每個詞的第一個字，只有一個詞就取前兩個字
+// 中文名稱沒有空白，用 Intl.Segmenter 斷詞，「直播小幫手」和「直播同好會」才不會都變成「直播」
+const wordSegmenter = new Intl.Segmenter('zh-TW', { granularity: 'word' });
+const guildInitials = (name: string) => {
+  const words = Array.from(wordSegmenter.segment(name))
+    .filter((part) => part.isWordLike)
+    .map((part) => part.segment);
+  return words.length > 1
+    ? words
+        .slice(0, 3)
+        .map((word) => Array.from(word)[0])
+        .join('')
+    : Array.from(words[0] || name)
+        .slice(0, 2)
+        .join('');
+};
 const sortedGuilds = computed(() =>
   guilds.value.toSorted(
     (left, right) =>
@@ -1756,6 +1783,26 @@ const showNav = () => {
   if (window.history.state?.settingsPane === 'content') window.history.back();
   else mobilePane.value = 'nav';
 };
+// 手機版切頁後另一頁變成 inert，焦點會掉到 body；進內容頁移到返回鍵，回來時還給原本按的按鈕
+const backButton = ref<HTMLButtonElement | null>(null);
+let paneTrigger: HTMLElement | null = null;
+watch(mobilePane, async (pane) => {
+  if (!isMobile.value) return;
+  // pre flush 時 DOM 還沒套 inert，這時的焦點才是使用者按的那個
+  if (pane === 'content')
+    paneTrigger =
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement !== document.body
+        ? document.activeElement
+        : null;
+  // 用手指點按鈕不會給焦點；這時硬移焦點，iOS 會畫出焦點框，看起來像 hover 殘留，所以只在原本有焦點時才移
+  if (!paneTrigger) return;
+  await nextTick();
+  // 內容頁還在滑入動畫時位在畫面外，不擋捲動的話瀏覽器會把整個版面往旁邊捲
+  const options = { preventScroll: true };
+  if (pane === 'content') backButton.value?.focus(options);
+  else if (paneTrigger.isConnected) paneTrigger.focus(options);
+});
 
 // 對話框在手機上是全螢幕，也記一筆歷史，返回手勢才會先關對話框
 type DialogHistory = DialogState & {
@@ -2626,7 +2673,7 @@ onBeforeUnmount(() => {
 }
 
 .guild-icon span {
-  @apply font-bold;
+  @apply text-sm font-bold;
 }
 
 .guild-icon:hover,

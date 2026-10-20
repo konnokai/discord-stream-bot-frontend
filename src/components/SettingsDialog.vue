@@ -2,6 +2,7 @@
   <dialog
     ref="dialog"
     class="settings-dialog"
+    tabindex="-1"
     :aria-labelledby="titleId"
     @close="emit('close')"
   >
@@ -33,7 +34,11 @@ const dialog = ref<HTMLDialogElement | null>(null);
 const titleId = useId();
 
 // 由父層用 v-if 控制顯示；掛載就開啟，Esc 或關閉都會觸發 close 讓父層卸載
-onMounted(() => dialog.value?.showModal());
+onMounted(() => {
+  dialog.value?.showModal();
+  // showModal 會把焦點給叉叉，iOS 會替它畫焦點框，看起來像按鈕卡在按下的狀態；改給對話框本身
+  dialog.value?.focus();
+});
 </script>
 
 <style scoped>
@@ -44,6 +49,11 @@ onMounted(() => dialog.value?.showModal());
   @apply m-auto w-full max-w-2xl rounded-lg border border-zinc-700 bg-zinc-900 p-0 text-zinc-200 shadow-2xl;
 
   max-height: calc(100dvh - 4rem);
+}
+
+/* 開啟時焦點在對話框本身，外框沒有意義 */
+.settings-dialog:focus {
+  outline: none;
 }
 
 .settings-dialog[open] {
