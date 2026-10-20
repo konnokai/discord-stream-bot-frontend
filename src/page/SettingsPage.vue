@@ -316,6 +316,13 @@
                   >
                     <option value="">不設定</option>
                     <option
+                      v-if="isStaleChannel(commonForm.globalNoticeChannelId)"
+                      :value="commonForm.globalNoticeChannelId"
+                      disabled
+                    >
+                      {{ staleChannelLabel(commonForm.globalNoticeChannelId) }}
+                    </option>
+                    <option
                       v-for="channel in writableChannels"
                       :key="channel.id"
                       :value="channel.id"
@@ -331,6 +338,15 @@
                     class="field"
                   >
                     <option value="">不設定</option>
+                    <option
+                      v-if="isStaleChannel(commonForm.verificationLogChannelId)"
+                      :value="commonForm.verificationLogChannelId"
+                      disabled
+                    >
+                      {{
+                        staleChannelLabel(commonForm.verificationLogChannelId)
+                      }}
+                    </option>
                     <option
                       v-for="channel in writableChannels"
                       :key="channel.id"
@@ -393,7 +409,24 @@
                     </span>
                   </span>
                   <span class="item-meta">
-                    # {{ channelName(row.channelId) }}
+                    <!-- 影片頻道沒另外設定時會存成直播頻道，相同就不用分兩行 -->
+                    <template
+                      v-if="
+                        'videoChannelId' in row &&
+                        row.videoChannelId &&
+                        row.videoChannelId !== row.channelId
+                      "
+                    >
+                      <span class="block truncate">
+                        直播 # {{ channelName(row.channelId) }}
+                      </span>
+                      <span class="block truncate">
+                        影片 # {{ channelName(row.videoChannelId) }}
+                      </span>
+                    </template>
+                    <template v-else>
+                      # {{ channelName(row.channelId) }}
+                    </template>
                     <span
                       v-if="row.detectionEnabled === false"
                       class="block text-amber-300"
@@ -583,6 +616,13 @@
               >
                 <option value="" disabled>請選擇頻道</option>
                 <option
+                  v-if="isStaleChannel(youtubeDraft.streamChannelId)"
+                  :value="youtubeDraft.streamChannelId"
+                  disabled
+                >
+                  {{ staleChannelLabel(youtubeDraft.streamChannelId) }}
+                </option>
+                <option
                   v-for="channel in writableChannels"
                   :key="channel.id"
                   :value="channel.id"
@@ -595,6 +635,13 @@
               影片通知頻道
               <select v-model="youtubeDraft.videoChannelId" class="field">
                 <option value="">未設定（沿用直播通知頻道）</option>
+                <option
+                  v-if="isStaleChannel(youtubeDraft.videoChannelId)"
+                  :value="youtubeDraft.videoChannelId"
+                  disabled
+                >
+                  {{ staleChannelLabel(youtubeDraft.videoChannelId) }}
+                </option>
                 <option
                   v-for="channel in writableChannels"
                   :key="channel.id"
@@ -649,6 +696,13 @@
                 required
               >
                 <option value="" disabled>請選擇頻道</option>
+                <option
+                  v-if="isStaleChannel(otherNotificationDraft.channelId)"
+                  :value="otherNotificationDraft.channelId"
+                  disabled
+                >
+                  {{ staleChannelLabel(otherNotificationDraft.channelId) }}
+                </option>
                 <option
                   v-for="channel in writableChannels"
                   :key="channel.id"
@@ -877,6 +931,13 @@
                 :disabled="editingVerification.deletionPending"
               >
                 <option
+                  v-if="isStaleRole(verificationRole)"
+                  :value="verificationRole"
+                  disabled
+                >
+                  已刪除的身分組，請重新選擇
+                </option>
+                <option
                   v-for="role in settings?.resources.roles"
                   :key="role.id"
                   :value="role.id"
@@ -909,9 +970,10 @@
           <template v-if="activePlatform === 'youtube'">
             <p class="text-sm">
               會員限定影片偵測模式：
-              {{
-                editingVerification.probeMode === 'manual' ? '手動' : '自動'
-              }}（{{ editingVerification.probeVideoId }}）
+              {{ editingVerification.probeMode === 'manual' ? '手動' : '自動' }}
+              <template v-if="editingVerification.probeVideoId">
+                （{{ editingVerification.probeVideoId }}）
+              </template>
             </p>
             <form
               class="dialog-inline-form"
@@ -923,11 +985,15 @@
                   v-model.trim="probeVideos[editingVerification.sourceId]"
                   class="field"
                   required
+                  :disabled="editingVerification.deletionPending"
                 />
               </label>
               <button
                 class="btn gap-2 bg-zinc-700 active:bg-zinc-600"
-                :disabled="isFormLoading(verificationKey)"
+                :disabled="
+                  editingVerification.deletionPending ||
+                  isFormLoading(verificationKey)
+                "
               >
                 <LoadingSpinner
                   v-if="
@@ -942,7 +1008,10 @@
               <button
                 type="button"
                 class="btn gap-2 bg-zinc-700 active:bg-zinc-600"
-                :disabled="isFormLoading(verificationKey)"
+                :disabled="
+                  editingVerification.deletionPending ||
+                  isFormLoading(verificationKey)
+                "
                 @click="useAutomaticProbe(editingVerification.sourceId)"
               >
                 <LoadingSpinner
@@ -1268,9 +1337,18 @@ const contentTitle = computed(() => {
     return `${activePlatformLabel.value} ${verificationName.value}`;
   return `${activePlatformLabel.value} ${featureLabels[activeFeature.value]}`;
 });
+// 頻道列表只有伺服器現存的頻道，找不到就是被刪了
 const channelName = (channelId: string) =>
   settings.value?.resources.channels.find((channel) => channel.id === channelId)
-    ?.name || channelId;
+    ?.name || '已刪除的頻道';
+// 已選的頻道不在可發言清單時，選單會變空白，要補一個選項說明原因
+const isStaleChannel = (channelId: string) =>
+  !!channelId &&
+  !writableChannels.value.some((channel) => channel.id === channelId);
+const staleChannelLabel = (channelId: string) =>
+  settings.value?.resources.channels.some((channel) => channel.id === channelId)
+    ? `# ${channelName(channelId)}（小幫手無法發言，請重新選擇）`
+    : '已刪除的頻道，請重新選擇';
 const notificationRows = computed(() => {
   if (activePlatform.value === 'youtube')
     return youtubeForms.value.map((item) => ({
@@ -1330,9 +1408,13 @@ const editingVerification = computed(() =>
     : undefined
 );
 const roleName = (roleId?: string | null) =>
-  settings.value?.resources.roles.find((role) => role.id === roleId)?.name ||
-  roleId ||
-  '未建立';
+  roleId
+    ? settings.value?.resources.roles.find((role) => role.id === roleId)
+        ?.name || '已刪除的身分組'
+    : '未建立';
+const isStaleRole = (roleId: string) =>
+  !!roleId &&
+  !settings.value?.resources.roles.some((role) => role.id === roleId);
 const tierRoleNames = (item: VerificationItem) =>
   Object.entries(item.tierRoleIds || {}).map(
     ([tier, roleId]) => `層級 ${Number(tier) / 1000}：${roleName(roleId)}`

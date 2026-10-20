@@ -21,6 +21,9 @@
       @keydown="handleKeydown"
       @blur="closeMenu"
     ></component>
+    <p v-if="preview" class="text-xs font-normal break-words text-zinc-400">
+      預覽：{{ preview }}
+    </p>
     <div
       v-if="menuOpen"
       :id="listboxId"
@@ -86,6 +89,15 @@ const filteredRoles = computed(() => {
         !role.everyone && role.name.toLocaleLowerCase().includes(normalized)
     )
     .toSorted((left, right) => right.position - left.position);
+});
+// 欄位裡存的是 Discord 格式 <@&ID>，看不出是哪個身分組，換成名稱給人看
+const preview = computed(() => {
+  if (!props.modelValue.includes('<@&')) return '';
+  return props.modelValue.replace(
+    /<@&(\d+)>/g,
+    (_, roleId: string) =>
+      `@${props.roles.find((role) => role.id === roleId)?.name || '已刪除的身分組'}`
+  );
 });
 const activeOptionId = computed(() =>
   menuOpen.value && filteredRoles.value.length > 0
