@@ -4,6 +4,7 @@
     class="settings-dialog"
     tabindex="-1"
     :aria-labelledby="titleId"
+    @cancel="onCancel"
     @close="emit('close')"
   >
     <header class="dialog-header">
@@ -12,7 +13,7 @@
         type="button"
         class="dialog-close"
         aria-label="關閉"
-        @click="dialog?.close()"
+        @click="emit('cancel')"
       >
         <X :size="20" aria-hidden="true" />
       </button>
@@ -28,12 +29,19 @@ import { onMounted, ref, useId } from 'vue';
 import { X } from '@lucide/vue';
 
 defineProps<{ title: string }>();
-const emit = defineEmits<{ close: [] }>();
+// cancel：使用者想關（Esc、叉叉），由父層決定要不要關；close：瀏覽器已經關掉了，父層只能跟著卸載
+const emit = defineEmits<{ cancel: []; close: [] }>();
 
 const dialog = ref<HTMLDialogElement | null>(null);
 const titleId = useId();
+// 連按 Esc 中間沒有其他操作時，瀏覽器不准擋，對話框一定會關；這時問「要不要關」沒有意義
+const onCancel = (event: Event) => {
+  if (!event.cancelable) return;
+  event.preventDefault();
+  emit('cancel');
+};
 
-// 由父層用 v-if 控制顯示；掛載就開啟，Esc 或關閉都會觸發 close 讓父層卸載
+// 由父層用 v-if 控制顯示；掛載就開啟
 onMounted(() => {
   dialog.value?.showModal();
   // showModal 會把焦點給叉叉，iOS 會替它畫焦點框，看起來像按鈕卡在按下的狀態；改給對話框本身

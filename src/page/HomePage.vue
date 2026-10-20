@@ -4,7 +4,7 @@
     <div class="flex-wrap justify-space-between items-center sm:flex">
       <div class="flex-1 flex justify-center my-3">
         《直播小幫手》是專為 VTuber 設計的 Discord
-        機器人，提供直播通知、建立待機室、影片上傳及會員資格驗證等功能
+        機器人，提供直播通知、建立待機室、新影片通知及會員資格驗證等功能
       </div>
     </div>
     <div class="h-7"></div>

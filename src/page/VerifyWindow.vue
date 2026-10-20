@@ -14,7 +14,7 @@
       或
       <strong class="text-purple-300">Twitch</strong>
     </p>
-    <p>Google 與 Twitch 都可選擇連結，也可同時連結</p>
+    <p>Google 和 Twitch 可以只連其中一個，也可以都連</p>
     <p>
       如果伺服器內沒有操作說明，可以參考
       <a
@@ -193,16 +193,16 @@ const callbackReasonMessages: Record<string, string> = {
   state_expired: '授權流程已逾時，請重新授權。',
   state_not_found: '找不到授權流程，請重新授權。',
   token_exchange_failed: '無法完成授權，請稍後再試。',
-  profile_fetch_failed: '無法取得帳號資料，請稍後重試。',
-  invalid_client: '授權應用程式驗證失敗，請聯絡管理員。',
+  profile_fetch_failed: '無法取得帳號資料，請稍後再試。',
+  invalid_client: '授權應用程式驗證失敗，請聯絡 Bot 擁有者。',
   invalid_scope: '授權範圍不正確，請重新授權。',
   account_conflict: '此帳號已連結至其他使用者。',
   authorization_busy: '目前有另一個 Twitch 授權操作正在處理，請稍後再試。',
   save_failed: '無法儲存連結資料，請稍後再試。',
-  provider_unavailable: '授權服務暫時無法使用，請稍後重試。',
+  provider_unavailable: '授權服務暫時無法使用，請稍後再試。',
   provider_validation_failed: '無法驗證授權帳號，請重新授權。',
   missing_code: '授權服務未回傳授權碼，請重新授權。',
-  server_error: '伺服器處理授權時發生錯誤，請稍後重試。'
+  server_error: '伺服器處理授權時發生錯誤，請稍後再試。'
 };
 
 const oauthCallbackStorageKey = 'providerOAuthCallback';
@@ -361,7 +361,7 @@ const refreshAccountLinks = async (
       twitchStatusOverride.value = 'error';
     }
     hasAccountLinksLoadError.value = true;
-    toast.error('無法取得帳號連結狀態，請稍後重試。');
+    toast.error('無法取得帳號連結狀態，請稍後再試。');
     return false;
   } finally {
     isAccountLinksFetching.value = false;
@@ -404,8 +404,8 @@ const handleOAuthCallback = (statusLoaded: boolean): boolean => {
     } else
       toast(
         callback.provider === 'google'
-          ? 'Google 已成功連結，可使用 YouTube 會員驗證功能。'
-          : 'Twitch 已成功連結，現在可使用 Twitch 訂閱驗證功能。'
+          ? 'Google 已連結，可以使用 YouTube 會員驗證了。'
+          : 'Twitch 已連結，可以使用 Twitch 訂閱驗證了。'
       );
   } else {
     if (
@@ -421,7 +421,7 @@ const handleOAuthCallback = (statusLoaded: boolean): boolean => {
 
     toast.error(
       callbackReasonMessages[callback.reason || ''] ||
-        '授權流程發生錯誤，請重新嘗試。'
+        '授權流程發生錯誤，請再試一次。'
     );
   }
 
@@ -473,12 +473,12 @@ const startProvider = async (provider: Provider) => {
 
     if (provider === 'google') {
       googleStatusOverride.value = 'error';
-      googleOperationStatus.value = '無法開始 Google 授權，請稍後重試。';
+      googleOperationStatus.value = '無法開始 Google 授權，請稍後再試。';
     } else twitchStatusOverride.value = 'error';
     toast.error(
       provider === 'google'
-        ? '無法開始 Google 授權，請稍後重試。'
-        : '無法開始 Twitch 授權，請稍後重試。'
+        ? '無法開始 Google 授權，請稍後再試。'
+        : '無法開始 Twitch 授權，請稍後再試。'
     );
   }
 };
@@ -514,27 +514,25 @@ const unlinkProvider = async (provider: Provider) => {
       error.status === 503
     ) {
       googleOperationStatus.value =
-        'Google 端的撤銷作業尚未完成，帳號仍維持目前的連結狀態，請稍後再試。';
-      toast.error(
-        'Google 端的撤銷作業尚未完成，帳號仍維持目前的連結狀態，請稍後再試。'
-      );
+        'Google 還沒完成撤銷，帳號目前仍是連結狀態，請稍後再試。';
+      toast.error('Google 還沒完成撤銷，帳號目前仍是連結狀態，請稍後再試。');
     } else if (
       provider === 'google' &&
       error instanceof AccountLinksApiError &&
       error.status === 409
     ) {
       googleOperationStatus.value =
-        '操作期間 Google 連結狀態已變更，本次未更新目前狀態，請重新整理後再試。';
+        '處理期間 Google 連結狀態有變動，這次操作沒有套用，請重新整理後再試。';
       toast.error(
-        '操作期間 Google 連結狀態已變更，本次未更新目前狀態，請重新整理後再試。'
+        '處理期間 Google 連結狀態有變動，這次操作沒有套用，請重新整理後再試。'
       );
     } else {
       if (provider === 'google')
-        googleOperationStatus.value = '無法解除 Google 連結，請稍後重試。';
+        googleOperationStatus.value = '無法解除 Google 連結，請稍後再試。';
       toast.error(
         provider === 'google'
-          ? '無法解除 Google 連結，請稍後重試。'
-          : '無法解除 Twitch 連結，請稍後重試。'
+          ? '無法解除 Google 連結，請稍後再試。'
+          : '無法解除 Twitch 連結，請稍後再試。'
       );
     }
 
@@ -555,11 +553,11 @@ const unlinkProvider = async (provider: Provider) => {
     };
     toast(
       googleUnlinkResponse.cleanupPending
-        ? 'Google 已解除連結，Discord 身分組仍在背景清理。'
+        ? 'Google 已解除連結，Discord 身分組還在背景清理。'
         : 'Google 已解除連結，YouTube 會員驗證功能將無法使用。'
     );
     googleOperationStatus.value = googleUnlinkResponse.cleanupPending
-      ? 'Google 已解除連結；Discord 身分組仍在背景清理。'
+      ? 'Google 已解除連結，Discord 身分組還在背景清理。'
       : 'Google 已解除連結，YouTube 會員驗證功能將無法使用。';
   } else {
     accountLinks.value = {
@@ -567,7 +565,7 @@ const unlinkProvider = async (provider: Provider) => {
       twitch: { ...accountLinks.value.twitch, status: 'revoked' }
     };
     toast(
-      'Twitch 已解除連結，訂閱驗證將停止，系統也會移除已授予的身分組。若伺服器使用 Twitch 爬蟲且人數低於 200 人，也會一併移除 Twitch 爬蟲。'
+      'Twitch 已解除連結，訂閱驗證會停止，驗證時給的身分組會被移除。伺服器未滿 200 人時，Twitch 爬蟲也會被移除。'
     );
   }
 

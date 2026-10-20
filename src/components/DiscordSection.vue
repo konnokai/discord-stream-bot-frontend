@@ -221,7 +221,7 @@ const fetchDiscordToken: AsyncFn<DiscordTokenResponse> = async () => {
       '',
       `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
     );
-    toast.error('Discord 登入驗證失敗，請重新嘗試。');
+    toast.error('Discord 登入驗證失敗，請再試一次。');
     return { error: 'invalid state' };
   }
 
@@ -264,7 +264,7 @@ const fetchDiscordToken: AsyncFn<DiscordTokenResponse> = async () => {
     userInfo.value = {} as DiscordUser;
     sessionStorage.removeItem('DT');
     sessionStorage.removeItem('DD');
-    toast.error('Discord 登入失敗，請重新嘗試。');
+    toast.error('Discord 登入失敗，請再試一次。');
     return { error };
   } finally {
     currentUrl.searchParams.delete('code');

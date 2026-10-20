@@ -86,12 +86,15 @@
       >
         <header class="sidebar-header">
           <div class="min-w-0">
-            <h1 class="truncate font-bold text-white">
+            <h1
+              class="truncate font-bold text-white"
+              :title="selectedGuild?.name"
+            >
               {{ selectedGuild?.name || '伺服器設定' }}
             </h1>
             <p v-if="settings" class="truncate text-xs text-zinc-400">
               <template v-if="settings.guild.memberCount !== undefined">
-                {{ settings.guild.memberCount }} 位成員 ·
+                {{ settings.guild.memberCount.toLocaleString() }} 位成員 ·
               </template>
               機器人{{
                 settings.health.botConnected === true
@@ -243,7 +246,9 @@
             class="shrink-0 text-zinc-400"
             aria-hidden="true"
           />
-          <h2 class="truncate font-bold text-white">{{ contentTitle }}</h2>
+          <h2 class="truncate font-bold text-white" :title="contentTitle">
+            {{ contentTitle }}
+          </h2>
         </header>
 
         <div class="content-body">
@@ -333,6 +338,9 @@
                       # {{ channel.name }}
                     </option>
                   </select>
+                  <span class="block text-xs font-normal text-zinc-400">
+                    小幫手的維護與更新公告會發到這裡
+                  </span>
                 </label>
                 <label>
                   驗證紀錄頻道
@@ -358,6 +366,9 @@
                       # {{ channel.name }}
                     </option>
                   </select>
+                  <span class="block text-xs font-normal text-zinc-400">
+                    會員驗證與訂閱驗證的結果會記錄在這裡，要先設定才能新增驗證
+                  </span>
                 </label>
                 <button
                   class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
@@ -406,7 +417,9 @@
                   @click="openNotificationDialog(row.source)"
                 >
                   <span class="item-main">
-                    <strong>{{ row.sourceName }}</strong>
+                    <strong :title="row.sourceName">
+                      {{ row.sourceName }}
+                    </strong>
                     <span v-if="row.sourceName !== row.source">
                       {{ row.source }}
                     </span>
@@ -455,12 +468,18 @@
                 hasCapability(`${activePlatform}-crawler`)
               "
             >
-              <p class="section-help">
+              <p v-if="!activeCrawler.enabled" class="section-help">
+                {{ activePlatformLabel }} 平台目前已停用，暫時無法新增爬蟲
+              </p>
+              <p v-else class="section-help">
                 目前使用 {{ activeCrawler.count }} 個來源（{{
                   activeCrawler.unlimited
                     ? '不限數量'
                     : `上限 ${activeCrawler.limit} 個`
                 }}）
+                <span v-if="crawlerAddDisabled" class="block text-amber-300">
+                  已達上限，無法再新增。若有需要請聯絡 Bot 擁有者
+                </span>
               </p>
               <button
                 type="button"
@@ -485,7 +504,9 @@
                   class="item-row"
                 >
                   <span class="item-main">
-                    <strong>{{ item.sourceName || item.sourceId }}</strong>
+                    <strong :title="item.sourceName || item.sourceId">
+                      {{ item.sourceName || item.sourceId }}
+                    </strong>
                     <span v-if="item.sourceName">{{ item.sourceId }}</span>
                   </span>
                   <button
@@ -523,9 +544,24 @@
               "
             >
               <p class="section-help">設定驗證來源、Discord 身分組和驗證紀錄</p>
+              <p
+                v-if="verificationLogChannelIssue"
+                class="mb-4 rounded bg-amber-900/70 p-3 text-sm text-amber-100"
+              >
+                {{ verificationLogChannelIssue }}
+                <button
+                  v-if="hasCapability('guild.common')"
+                  type="button"
+                  class="ml-2 font-medium underline underline-offset-2"
+                  @click="openFeature('general')"
+                >
+                  前往一般設定
+                </button>
+              </p>
               <button
                 type="button"
                 class="btn create-button bg-indigo-600 active:bg-indigo-500"
+                :disabled="!!verificationLogChannelIssue"
                 @click="openVerificationDialog()"
               >
                 新增{{ verificationName }}設定
@@ -547,8 +583,12 @@
                   @click="openVerificationDialog(item.sourceId)"
                 >
                   <span class="item-main">
-                    <strong>{{ item.sourceName || item.sourceId }}</strong>
-                    <span>已驗證 {{ item.verifiedMemberCount }} 人</span>
+                    <strong :title="item.sourceName || item.sourceId">
+                      {{ item.sourceName || item.sourceId }}
+                    </strong>
+                    <span>
+                      已驗證 {{ item.verifiedMemberCount.toLocaleString() }} 人
+                    </span>
                   </span>
                   <span class="item-meta">
                     @{{ roleName(item.roleId) }}
@@ -583,6 +623,7 @@
       <SettingsDialog
         v-if="dialog?.kind === 'notification'"
         :title="`${dialog?.source ? '編輯' : '新增'} ${activePlatformLabel} 通知`"
+        @cancel="requestCloseDialog"
         @close="closeDialog"
       >
         <form class="dialog-form" @submit.prevent="submitNotification">
@@ -654,6 +695,7 @@
                 </option>
               </select>
             </label>
+            <p class="text-sm text-zinc-400">{{ messageFieldHelp }}</p>
             <RoleMentionField
               v-model="youtubeDraft.messages.newStream"
               label="新直播訊息"
@@ -715,6 +757,7 @@
                 </option>
               </select>
             </label>
+            <p class="text-sm text-zinc-400">{{ messageFieldHelp }}</p>
             <RoleMentionField
               v-model="otherNotificationDraft.startMessage"
               label="開播訊息"
@@ -747,7 +790,7 @@
             "
             class="text-sm text-amber-300"
           >
-            設定已儲存，但目前尚未建立爬蟲，通知不會送出
+            這個頻道還沒有爬蟲，通知不會送出
             <button
               type="button"
               class="ml-2 font-medium underline underline-offset-2"
@@ -778,7 +821,7 @@
             <button
               type="button"
               class="btn bg-zinc-700 active:bg-zinc-600"
-              @click="closeDialog"
+              @click="requestCloseDialog"
             >
               取消
             </button>
@@ -803,6 +846,7 @@
       <SettingsDialog
         v-if="dialog?.kind === 'crawler'"
         :title="`新增 ${activePlatformLabel} 爬蟲`"
+        @cancel="requestCloseDialog"
         @close="closeDialog"
       >
         <form class="dialog-form" @submit.prevent="submitCrawler">
@@ -826,7 +870,7 @@
             <button
               type="button"
               class="btn bg-zinc-700 active:bg-zinc-600"
-              @click="closeDialog"
+              @click="requestCloseDialog"
             >
               取消
             </button>
@@ -853,6 +897,7 @@
             ? editingVerification.sourceName || editingVerification.sourceId
             : `新增${verificationName}設定`
         "
+        @cancel="requestCloseDialog"
         @close="closeDialog"
       >
         <form
@@ -888,7 +933,7 @@
             <button
               type="button"
               class="btn bg-zinc-700 active:bg-zinc-600"
-              @click="closeDialog"
+              @click="requestCloseDialog"
             >
               取消
             </button>
@@ -906,9 +951,9 @@
 
         <div v-else-if="editingVerification" class="dialog-form">
           <p class="text-sm text-zinc-400">
-            已有 {{ editingVerification.verifiedMemberCount }}
+            已有 {{ editingVerification.verifiedMemberCount.toLocaleString() }}
             人完成驗證，還有
-            {{ editingVerification.pendingRoleRemovalCount }}
+            {{ editingVerification.pendingRoleRemovalCount.toLocaleString() }}
             人的身分組待移除
           </p>
           <p
@@ -1025,7 +1070,7 @@
                     )
                   "
                 />
-                改回自動探索
+                改回自動偵測
               </button>
             </form>
           </template>
@@ -1062,7 +1107,7 @@
             <button
               type="button"
               class="btn bg-zinc-700 active:bg-zinc-600"
-              @click="closeDialog"
+              @click="requestCloseDialog"
             >
               關閉
             </button>
@@ -1423,6 +1468,22 @@ const roleName = (roleId?: string | null) =>
     ? settings.value?.resources.roles.find((role) => role.id === roleId)
         ?.name || '已刪除的身分組'
     : '未建立';
+// Bot 只在訊息是「-」時跳過這種通知；留空照樣發通知卡片，只是上面沒有文字
+const messageFieldHelp =
+  '訊息會顯示在通知卡片上方，輸入 @ 可以提及身分組。留空只發通知卡片；填「-」就不發這一種通知';
+// Bot 新增驗證前會先檢查紀錄頻道，沒設好一定被拒，先在畫面上講清楚
+const verificationLogChannelIssue = computed(() => {
+  const channelId = settings.value?.common.verificationLogChannelId || '';
+  if (!channelId) return '新增驗證前，要先到「一般設定」選擇驗證紀錄頻道';
+  const channel = settings.value?.resources.channels.find(
+    (item) => item.id === channelId
+  );
+  if (!channel) return '驗證紀錄頻道已被刪除，請到「一般設定」重新選擇';
+  // 跟 Bot 的檢查一致：要能查看、發言、嵌入連結
+  if (!channel.canView || !channel.canSendMessages || !channel.canEmbedLinks)
+    return `小幫手在驗證紀錄頻道 # ${channel.name} 缺少查看頻道、傳送訊息或嵌入連結權限，請到 Discord 補上權限，或到「一般設定」換一個頻道`;
+  return '';
+});
 const isStaleRole = (roleId: string) =>
   !!roleId &&
   !settings.value?.resources.roles.some((role) => role.id === roleId);
@@ -1525,6 +1586,8 @@ const replyText = computed(() => {
     'crawler.platform-disabled': '平台 API 目前停用，暫時無法新增爬蟲。',
     'verification.log-channel-required': '請先到「一般設定」選擇驗證紀錄頻道。',
     'verification.log-channel-missing': '驗證紀錄頻道已不存在，請重新設定。',
+    'verification.log-channel-missing-permissions':
+      '小幫手在驗證紀錄頻道缺少查看頻道、傳送訊息或嵌入連結權限，請補上權限或換一個頻道。',
     'verification.configured': '驗證設定已套用。',
     'verification.removed': '驗證設定已移除。',
     'verification.cleanup-pending':
@@ -1533,18 +1596,19 @@ const replyText = computed(() => {
     'verification.limit-reached':
       '已達此伺服器的驗證頻道數量上限，若有需要請聯絡 Bot 擁有者。',
     'verification.guild-member-requirement':
-      '此伺服器人數未達驗證功能的使用門檻，若有需要請聯絡 Bot 擁有者。。',
-    'verification.manage-roles-required': 'Bot 沒有管理身分組的權限。',
+      '此伺服器人數未達驗證功能的使用門檻，若有需要請聯絡 Bot 擁有者。',
+    'verification.manage-roles-required': '小幫手沒有管理身分組的權限。',
     'verification.role-invalid': '無法使用所選的身分組。',
-    'verification.role-too-high': '所選身分組的位置高於 Bot 可管理的最高位置。',
+    'verification.role-too-high':
+      '所選身分組的位置高於小幫手可管理的最高位置。',
     'verification.role-collision': '這個身分組已被另一個驗證平台使用。',
     'verification.deletion-pending': '設定正在清理，暫時無法更新。',
     'verification.source-not-found':
       '找不到這個平台頻道，請確認網址或 ID 是否正確。',
     'verification.source-ineligible':
       '此 Twitch 頻道不是實況盟友或合作夥伴，無法使用訂閱驗證。',
-    'verification.probe-video-set': '已改用手動探測影片。',
-    'verification.probe-automatic': '已改回自動尋找驗證影片。',
+    'verification.probe-video-set': '已改用手動指定的偵測影片。',
+    'verification.probe-automatic': '已改回自動偵測影片。',
     'verification.probe-video-invalid':
       '影片不存在、留言已停用，或不是可用的會員限定影片。',
     'verification.platform-disabled': '驗證平台目前已停用。'
@@ -1831,6 +1895,43 @@ const syncPane = () => {
     dialog.value = { kind: target.kind, source: target.source };
   mobilePane.value = state?.settingsPane === 'content' ? 'content' : 'nav';
 };
+
+// 開對話框時記下草稿，關閉前比對，有改過才問要不要放棄
+const dialogDraftSnapshot = () => {
+  const current = dialog.value;
+  if (!current) return '';
+  if (current.kind === 'notification')
+    return JSON.stringify(notificationDraft.value);
+  if (current.kind === 'crawler')
+    return newCrawlerSources.value[activePlatform.value];
+  return JSON.stringify(
+    current.source
+      ? [verificationRole.value, probeVideos.value[current.source] || '']
+      : newVerification.value
+  );
+};
+let dialogDraftBaseline = '';
+watch(
+  () => dialog.value && `${dialog.value.kind}:${dialog.value.source}`,
+  () => (dialogDraftBaseline = dialogDraftSnapshot())
+);
+const dialogFormKey = computed(() => {
+  const current = dialog.value;
+  if (current?.kind === 'notification') return notificationKey.value;
+  return `${current?.kind}:${activePlatform.value}:${current?.source || 'new'}`;
+});
+// 返回手勢不經過這裡：草稿關閉時沒清掉，往前滑就能開回來
+const requestCloseDialog = () => {
+  // 儲存中關掉會看不到結果
+  if (isFormLoading(dialogFormKey.value)) return;
+  if (
+    dialogDraftSnapshot() !== dialogDraftBaseline &&
+    !window.confirm('有尚未儲存的變更，確定要關閉嗎？')
+  )
+    return;
+  closeDialog();
+};
+
 watch(dialog, (current) => {
   const inHistory = !!window.history.state?.settingsDialog;
   if (current && (inHistory || isMobile.value)) {

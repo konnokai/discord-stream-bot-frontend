@@ -25,7 +25,7 @@
 
     <p class="text-sm leading-6 text-zinc-300 mb-5">
       授權只用來讀取 YouTube
-      頻道資料，以及此帳號在會員限定影片中的留言，以確認您是否具有該頻道的會員資格。系統不會修改您的影片、評價、留言或字幕，也不會將授權用於其他用途
+      頻道資料，以及這個帳號在會員限定影片的留言，用來確認您是不是該頻道的會員。系統不會修改您的影片、評價、留言或字幕，也不會將授權用於其他用途
     </p>
     <p class="text-sm leading-6 text-zinc-300 mb-5">
       伺服器管理員完成設定後，請回到 Discord 執行
@@ -59,14 +59,14 @@
       aria-atomic="true"
     >
       <p class="font-bold">身分組清理中</p>
-      <p>Discord 身分組仍在背景清理，請稍後手動重新取得資訊確認進度</p>
+      <p>Discord 身分組還在背景清理，請稍後按「重新取得清理狀態」查看進度</p>
     </div>
 
     <p v-if="status === 'invalid'" class="text-sm text-amber-300 mb-4">
       Google 授權已失效，重新授權後才能繼續使用 YouTube 會員驗證
     </p>
     <p v-else-if="status === 'error'" class="text-sm text-red-300 mb-4">
-      無法完成 Google 授權或取得最新狀態，請稍後重試
+      無法完成 Google 授權或取得最新狀態，請稍後再試
     </p>
 
     <div class="mt-auto flex flex-wrap justify-center gap-3">
