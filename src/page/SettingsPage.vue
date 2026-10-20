@@ -2961,7 +2961,7 @@ div.item-row {
 }
 
 label {
-  @apply grid gap-1 text-sm font-medium text-zinc-200;
+  @apply grid content-start gap-1 text-sm font-medium text-zinc-200;
 }
 
 .field {
