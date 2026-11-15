@@ -393,75 +393,123 @@
 
             <section
               v-if="
-                activeFeature === 'profile' && hasCapability('guild.bot-profile')
+                activeFeature === 'profile' &&
+                hasCapability('guild.bot-profile')
               "
             >
               <p class="section-help">
-                只影響小幫手在這台伺服器顯示的頭像與橫幅，其他伺服器不會變。選好的圖片會先裁切再上傳。
+                只影響小幫手在這台伺服器顯示的暱稱、頭像與橫幅。選好的圖片會先裁切再上傳。
               </p>
-              <form class="settings-grid" @submit.prevent="saveProfile">
-                <div class="profile-field">
-                  <span>伺服器專屬頭像</span>
-                  <div class="profile-avatar">
+              <form class="profile-layout" @submit.prevent="saveProfile">
+                <label v-if="hasNicknameField" class="profile-nickname">
+                  小幫手暱稱
+                  <input
+                    v-model="nicknameInput"
+                    class="field max-w-md"
+                    type="text"
+                    maxlength="32"
+                    placeholder="留空則使用預設名稱"
+                    :disabled="isFormLoading('profile') || !canEditNickname"
+                  />
+                  <span class="block text-xs font-normal text-zinc-400">
+                    {{
+                      canEditNickname
+                        ? '只影響這台伺服器，留空會恢復預設名稱'
+                        : '小幫手在這台伺服器缺少「變更暱稱」權限'
+                    }}
+                  </span>
+                </label>
+                <div class="profile-card">
+                  <div class="profile-card-head">
+                    <h3>伺服器專屬頭像</h3>
+                    <span>正方形 1:1</span>
+                  </div>
+                  <div class="profile-avatar-frame">
                     <img
                       v-if="profilePreview.avatar"
                       :src="profilePreview.avatar"
                       alt="目前的伺服器專屬頭像"
                     />
-                    <span v-else>未設定，目前使用全域頭像</span>
+                    <span v-else>目前使用全域頭像</span>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    class="field"
-                    aria-label="選擇伺服器專屬頭像圖片"
+                  <FileDropZone
                     :disabled="isFormLoading('profile')"
-                    @change="pickProfileImage('avatar', $event)"
+                    @file="openProfileEditor('avatar', $event)"
                   />
                   <button
                     type="button"
-                    class="btn justify-self-start bg-zinc-700 active:bg-zinc-600"
-                    :disabled="isFormLoading('profile') || !profilePreview.avatar"
+                    class="profile-reset"
+                    :disabled="
+                      isFormLoading('profile') || !profilePreview.avatar
+                    "
                     @click="clearProfileImage('avatar')"
                   >
                     恢復全域頭像
                   </button>
                 </div>
-                <div class="profile-field">
-                  <span>伺服器專屬橫幅</span>
-                  <div class="profile-banner">
+
+                <div class="profile-card">
+                  <div class="profile-card-head">
+                    <h3>伺服器專屬橫幅</h3>
+                    <span>17:6</span>
+                  </div>
+                  <div class="profile-banner-frame">
                     <img
                       v-if="profilePreview.banner"
                       :src="profilePreview.banner"
                       alt="目前的伺服器專屬橫幅"
                     />
-                    <span v-else>未設定，目前使用全域橫幅</span>
+                    <span v-else>目前使用全域橫幅</span>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    class="field"
-                    aria-label="選擇伺服器專屬橫幅圖片"
+                  <FileDropZone
                     :disabled="isFormLoading('profile')"
-                    @change="pickProfileImage('banner', $event)"
+                    @file="openProfileEditor('banner', $event)"
                   />
                   <button
                     type="button"
-                    class="btn justify-self-start bg-zinc-700 active:bg-zinc-600"
-                    :disabled="isFormLoading('profile') || !profilePreview.banner"
+                    class="profile-reset"
+                    :disabled="
+                      isFormLoading('profile') || !profilePreview.banner
+                    "
                     @click="clearProfileImage('banner')"
                   >
                     恢復全域橫幅
                   </button>
                 </div>
+
+                <div
+                  v-if="isFormLoading('profile') && hasPendingImage"
+                  class="profile-upload"
+                  role="status"
+                >
+                  <span>正在上傳{{ profileUploadLabel }}</span>
+                  <span class="profile-upload-track">
+                    <span class="profile-upload-bar"></span>
+                  </span>
+                </div>
+
                 <button
-                  class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
-                  :disabled="isFormLoading('profile') || !hasPendingProfile"
+                  class="btn profile-save gap-2 bg-indigo-600 active:bg-indigo-500"
+                  :disabled="isFormLoading('profile') || !hasPendingChanges"
                 >
                   <LoadingSpinner v-if="isFormLoading('profile')" />
                   {{ isFormLoading('profile') ? '儲存中…' : '儲存設定' }}
                 </button>
               </form>
+
+              <ImageCropDialog
+                v-if="profileEditing"
+                :file="profileEditing.file"
+                :shape="profileEditing.kind === 'avatar' ? 'circle' : 'banner'"
+                :title="
+                  profileEditing.kind === 'avatar' ? '編輯頭像' : '編輯橫幅'
+                "
+                :output-width="profileEditing.kind === 'avatar' ? 512 : 1020"
+                :output-height="profileEditing.kind === 'avatar' ? 512 : 360"
+                @apply="applyProfileImage"
+                @cancel="closeProfileEditor"
+                @close="closeProfileEditor"
+              />
             </section>
 
             <section
@@ -1248,6 +1296,8 @@ import {
   Settings,
   Trash
 } from '@lucide/vue';
+import FileDropZone from '../components/FileDropZone.vue';
+import ImageCropDialog from '../components/ImageCropDialog.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import RoleMentionField from '../components/RoleMentionField.vue';
 import SettingsDialog from '../components/SettingsDialog.vue';
@@ -1309,11 +1359,7 @@ interface ChzzkForm {
 }
 
 type Feature =
-  | 'general'
-  | 'profile'
-  | 'notification'
-  | 'crawler'
-  | 'verification';
+  'general' | 'profile' | 'notification' | 'crawler' | 'verification';
 type Platform = 'youtube' | 'twitch' | 'twitcasting' | 'chzzk';
 
 const apiURL = inject<string>('apiURL');
@@ -1373,10 +1419,36 @@ const profilePreview = computed(() => ({
       ? settings.value?.common.botBannerUrl || ''
       : pendingProfile.value.banner || ''
 }));
+const nicknameInput = ref('');
 const hasPendingProfile = computed(
-  () =>
-    'avatar' in pendingProfile.value || 'banner' in pendingProfile.value
+  () => 'avatar' in pendingProfile.value || 'banner' in pendingProfile.value
 );
+const hasPendingImage = computed(
+  () =>
+    typeof pendingProfile.value.avatar === 'string' ||
+    typeof pendingProfile.value.banner === 'string'
+);
+const canEditNickname = computed(
+  () => settings.value?.common.canEditBotNickname === true
+);
+// 舊版 bot 沒有回 botNickname，這時不顯示暱稱欄位，免得提示成「缺少權限」
+const hasNicknameField = computed(
+  () => settings.value?.common.botNickname !== undefined
+);
+const nicknameChanged = computed(
+  () =>
+    canEditNickname.value &&
+    nicknameInput.value.trim() !== (settings.value?.common.botNickname || '')
+);
+const hasPendingChanges = computed(
+  () => hasPendingProfile.value || nicknameChanged.value
+);
+const profileUploadLabel = computed(() => {
+  const avatar = typeof pendingProfile.value.avatar === 'string';
+  const banner = typeof pendingProfile.value.banner === 'string';
+  if (avatar && banner) return '頭像與橫幅';
+  return banner ? '橫幅' : '頭像';
+});
 const youtubeForms = ref<YouTubeForm[]>([]);
 const twitchForms = ref<TwitchForm[]>([]);
 const twitcastingForms = ref<TwitCastingForm[]>([]);
@@ -1473,10 +1545,7 @@ const platformsByFeature: Record<
   crawler: ['youtube', 'twitch', 'twitcasting', 'chzzk'],
   verification: ['youtube', 'twitch']
 };
-const featureLabels: Record<
-  Exclude<Feature, 'general' | 'profile'>,
-  string
-> = {
+const featureLabels: Record<Exclude<Feature, 'general' | 'profile'>, string> = {
   notification: '直播通知',
   crawler: '爬蟲',
   verification: '會員驗證'
@@ -1687,8 +1756,11 @@ const replyText = computed(() => {
     'settings.invalid-source': '來源格式不正確，請輸入頻道 ID 或頻道網址。',
     'settings.invalid-image':
       'Discord 不接受這張圖片：格式不正確，或短時間內換太多次。請換一張圖或過幾分鐘再試。',
-    'settings.rate-limited':
-      'Discord 暫時限制更換頭像或橫幅，請過幾分鐘再試。',
+    'settings.rate-limited': 'Discord 暫時限制更換頭像或橫幅，請過幾分鐘再試。',
+    'settings.missing-permission':
+      '小幫手沒有「變更暱稱」權限，請調整身分組後再試。',
+    'settings.invalid-nickname':
+      'Discord 不接受這個暱稱，可能被 AutoMod 或名稱規則擋下，請換一個。',
     'crawler.source-not-found':
       '找不到這個平台頻道，請確認網址或 ID 是否正確。',
     'crawler.already-exists': '這個爬蟲已經在此伺服器中。',
@@ -1792,8 +1864,9 @@ const normalizeSnapshot = (
 
 const useSnapshot = (snapshot: GuildSettingsSnapshot) => {
   settings.value = normalizeSnapshot(snapshot);
-  // 換伺服器時丟掉還沒送出的圖片，避免把 A 伺服器選的圖存到 B
+  // 換伺服器時丟掉還沒送出的圖片與暱稱，避免把 A 伺服器的內容存到 B
   pendingProfile.value = {};
+  nicknameInput.value = settings.value.common.botNickname || '';
   commonForm.value = {
     locale: settings.value.common.locale || 'zh-TW',
     globalNoticeChannelId: settings.value.common.globalNoticeChannelId || '',
@@ -2246,80 +2319,26 @@ const saveGeneral = async () => {
   mutationReply.value = { state: pending ? 'pending' : 'applied' };
 };
 
-const profileImageSize = {
-  avatar: { width: 512, height: 512 },
-  banner: { width: 1020, height: 360 }
-} as const;
+// 選好圖後先進裁切對話框，按「套用」才寫回 pendingProfile
+const profileEditing = ref<{
+  kind: 'avatar' | 'banner';
+  file: File;
+} | null>(null);
 
-const blobToDataURL = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-
-// 依目標比例置中裁切後轉 JPEG：Discord.Net 送圖時把 MIME 固定寫成 image/jpeg。
-const toProfileImage = async (
-  file: File,
-  width: number,
-  height: number
-): Promise<string> => {
-  const bitmap = await createImageBitmap(file);
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('canvas_unavailable');
-
-    const scale = Math.max(width / bitmap.width, height / bitmap.height);
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, width, height);
-    context.drawImage(
-      bitmap,
-      (width - bitmap.width * scale) / 2,
-      (height - bitmap.height * scale) / 2,
-      bitmap.width * scale,
-      bitmap.height * scale
-    );
-
-    for (const quality of [0.85, 0.7]) {
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/jpeg', quality)
-      );
-      if (blob && blob.size <= 256 * 1024) return blobToDataURL(blob);
-    }
-    throw new Error('image_too_large');
-  } finally {
-    bitmap.close();
-  }
+const openProfileEditor = (kind: 'avatar' | 'banner', file: File) => {
+  mutationReply.value = null;
+  profileEditing.value = { kind, file };
 };
 
-const pickProfileImage = async (
-  field: 'avatar' | 'banner',
-  event: Event
-) => {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  // 清掉選擇，同一張圖才能再選一次
-  input.value = '';
-  if (!file) return;
+const applyProfileImage = (dataUrl: string) => {
+  const kind = profileEditing.value?.kind;
+  profileEditing.value = null;
+  if (!kind) return;
+  pendingProfile.value[kind] = dataUrl;
+};
 
-  const selectionVersion = guildSelectionVersion;
-  try {
-    const size = profileImageSize[field];
-    const image = await toProfileImage(file, size.width, size.height);
-    // 處理期間換了伺服器就丟掉，避免把 A 伺服器選的圖存到 B
-    if (selectionVersion !== guildSelectionVersion) return;
-    pendingProfile.value[field] = image;
-    mutationReply.value = null;
-  } catch {
-    mutationReply.value = {
-      state: 'rejected',
-      message: '無法處理這張圖片，請換一張 JPG 或 PNG。'
-    };
-  }
+const closeProfileEditor = () => {
+  profileEditing.value = null;
 };
 
 const clearProfileImage = (field: 'avatar' | 'banner') => {
@@ -2335,12 +2354,14 @@ const clearProfileImage = (field: 'avatar' | 'banner') => {
 };
 
 const saveProfile = async () => {
-  if (!settings.value || !hasPendingProfile.value) {
+  if (!settings.value || !hasPendingChanges.value) {
     mutationReply.value = { state: 'applied', message: '設定未變更。' };
     return;
   }
 
   const submitted = { ...pendingProfile.value };
+  const nickname = nicknameInput.value.trim();
+  const nicknameEdited = nicknameChanged.value;
   const payload: Record<string, unknown> = {};
   for (const field of ['avatar', 'banner'] as const) {
     if (!(field in submitted)) continue;
@@ -2348,14 +2369,17 @@ const saveProfile = async () => {
     if (value === null) payload[field] = null;
     else if (value) payload[field] = value.split(',')[1];
   }
+  if (nicknameEdited) payload.nick = nickname === '' ? null : nickname;
 
   const reply = await runMutation('profile', 'guild.set-bot-profile', payload);
-  if (!reply || (reply.state !== 'applied' && reply.state !== 'pending')) return;
+  if (!reply || (reply.state !== 'applied' && reply.state !== 'pending'))
+    return;
 
-  // Discord 的 member 事件還沒到，重新抓快照會拿到舊圖，所以先用剛裁好的本地預覽。
+  // Discord 的 member 事件還沒到，重新抓快照會拿到舊資料，所以先用剛送出的內容。
   const common = settings.value.common;
   if ('avatar' in submitted) common.botAvatarUrl = submitted.avatar || '';
   if ('banner' in submitted) common.botBannerUrl = submitted.banner || '';
+  if (nicknameEdited) common.botNickname = nickname;
   pendingProfile.value = {};
 };
 
@@ -3222,24 +3246,86 @@ select.field {
   @apply cursor-default bg-neutral-900 text-white;
 }
 
-.profile-field {
-  @apply grid content-start gap-2 text-sm font-medium text-zinc-200;
+.profile-layout {
+  @apply grid gap-4 md:grid-cols-2;
 }
 
-.profile-avatar {
-  @apply flex min-h-16 items-center gap-3 text-xs font-normal text-zinc-400;
+.profile-nickname {
+  @apply md:col-span-2;
 }
 
-.profile-avatar img {
-  @apply h-16 w-16 shrink-0 rounded-full object-cover;
+.profile-card {
+  @apply flex flex-col gap-3 rounded border border-zinc-700/70 bg-zinc-900/40 p-4;
 }
 
-.profile-banner {
-  @apply flex min-h-16 w-full max-w-sm items-center overflow-hidden rounded bg-neutral-900 text-xs font-normal text-zinc-400;
+.profile-card-head {
+  @apply flex items-baseline justify-between gap-2;
 }
 
-.profile-banner img {
-  @apply aspect-[17/6] w-full object-cover;
+.profile-card-head h3 {
+  @apply text-sm font-semibold text-zinc-100;
+}
+
+.profile-card-head span {
+  @apply text-xs font-normal text-zinc-500;
+}
+
+.profile-avatar-frame {
+  @apply relative mx-auto flex h-32 w-32 items-center justify-center overflow-hidden bg-neutral-900 px-3 text-center text-[11px] leading-tight text-zinc-500;
+
+  border-radius: 50%;
+}
+
+.profile-avatar-frame img {
+  @apply absolute inset-0 h-full w-full object-cover;
+}
+
+.profile-banner-frame {
+  @apply flex aspect-[17/6] w-full items-center justify-center overflow-hidden rounded bg-neutral-900 text-xs text-zinc-500;
+}
+
+.profile-banner-frame img {
+  @apply h-full w-full object-cover;
+}
+
+.profile-reset {
+  @apply self-start text-xs text-zinc-400 underline underline-offset-2 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-300 disabled:cursor-not-allowed disabled:text-zinc-600 disabled:no-underline;
+}
+
+.profile-save {
+  @apply md:col-span-2 md:justify-self-start;
+}
+
+.profile-upload {
+  @apply flex items-center gap-3 text-xs text-zinc-400 md:col-span-2;
+}
+
+.profile-upload-track {
+  @apply h-1 w-40 overflow-hidden rounded bg-zinc-700;
+}
+
+.profile-upload-bar {
+  @apply block h-full origin-left bg-indigo-400;
+
+  animation: profile-upload 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) forwards;
+}
+
+@keyframes profile-upload {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-upload-bar {
+    animation: none;
+
+    transform: scaleX(0.9);
+  }
 }
 
 .checkbox-label {

@@ -51,6 +51,8 @@ export interface GuildSettingsSnapshot {
     verificationLogChannelId?: string;
     botAvatarUrl?: string;
     botBannerUrl?: string;
+    botNickname?: string;
+    canEditBotNickname?: boolean;
   };
   notifications: {
     youtube: Array<{
