@@ -49,6 +49,8 @@ export interface GuildSettingsSnapshot {
     locale?: string;
     globalNoticeChannelId?: string;
     verificationLogChannelId?: string;
+    botAvatarUrl?: string;
+    botBannerUrl?: string;
   };
   notifications: {
     youtube: Array<{
@@ -116,6 +118,7 @@ export type AdminMutationAction =
   | 'guild.set-locale'
   | 'guild.set-global-notice-channel'
   | 'guild.set-verification-log-channel'
+  | 'guild.set-bot-profile'
   | 'youtube-notification.upsert'
   | 'youtube-notification.remove'
   | 'twitch-notification.upsert'

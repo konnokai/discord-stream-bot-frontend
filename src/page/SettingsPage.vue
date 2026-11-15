@@ -195,6 +195,17 @@
               <Settings :size="18" aria-hidden="true" />
               一般設定
             </button>
+            <button
+              v-if="hasCapability('guild.bot-profile')"
+              type="button"
+              class="channel-item"
+              :class="{ active: activeFeature === 'profile' }"
+              :aria-current="activeFeature === 'profile' ? 'page' : undefined"
+              @click="openFeature('profile')"
+            >
+              <ImageIcon :size="18" aria-hidden="true" />
+              機器人外觀
+            </button>
             <template v-for="group in featureGroups" :key="group.feature">
               <template v-if="group.platforms.length">
                 <h2 class="channel-category">{{ group.label }}</h2>
@@ -376,6 +387,79 @@
                 >
                   <LoadingSpinner v-if="isFormLoading('general')" />
                   {{ isFormLoading('general') ? '儲存中…' : '儲存設定' }}
+                </button>
+              </form>
+            </section>
+
+            <section
+              v-if="
+                activeFeature === 'profile' && hasCapability('guild.bot-profile')
+              "
+            >
+              <p class="section-help">
+                只影響小幫手在這台伺服器顯示的頭像與橫幅，其他伺服器不會變。選好的圖片會先裁切再上傳。
+              </p>
+              <form class="settings-grid" @submit.prevent="saveProfile">
+                <div class="profile-field">
+                  <span>伺服器專屬頭像</span>
+                  <div class="profile-avatar">
+                    <img
+                      v-if="profilePreview.avatar"
+                      :src="profilePreview.avatar"
+                      alt="目前的伺服器專屬頭像"
+                    />
+                    <span v-else>未設定，目前使用全域頭像</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    class="field"
+                    aria-label="選擇伺服器專屬頭像圖片"
+                    :disabled="isFormLoading('profile')"
+                    @change="pickProfileImage('avatar', $event)"
+                  />
+                  <button
+                    type="button"
+                    class="btn justify-self-start bg-zinc-700 active:bg-zinc-600"
+                    :disabled="isFormLoading('profile') || !profilePreview.avatar"
+                    @click="clearProfileImage('avatar')"
+                  >
+                    恢復全域頭像
+                  </button>
+                </div>
+                <div class="profile-field">
+                  <span>伺服器專屬橫幅</span>
+                  <div class="profile-banner">
+                    <img
+                      v-if="profilePreview.banner"
+                      :src="profilePreview.banner"
+                      alt="目前的伺服器專屬橫幅"
+                    />
+                    <span v-else>未設定，目前使用全域橫幅</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    class="field"
+                    aria-label="選擇伺服器專屬橫幅圖片"
+                    :disabled="isFormLoading('profile')"
+                    @change="pickProfileImage('banner', $event)"
+                  />
+                  <button
+                    type="button"
+                    class="btn justify-self-start bg-zinc-700 active:bg-zinc-600"
+                    :disabled="isFormLoading('profile') || !profilePreview.banner"
+                    @click="clearProfileImage('banner')"
+                  >
+                    恢復全域橫幅
+                  </button>
+                </div>
+                <button
+                  class="btn mt-3 gap-2 bg-indigo-600 active:bg-indigo-500"
+                  :disabled="isFormLoading('profile') || !hasPendingProfile"
+                >
+                  <LoadingSpinner v-if="isFormLoading('profile')" />
+                  {{ isFormLoading('profile') ? '儲存中…' : '儲存設定' }}
                 </button>
               </form>
             </section>
@@ -1158,6 +1242,7 @@ import {
   ChevronRight,
   Hash,
   House,
+  Image as ImageIcon,
   Plus,
   RefreshCw,
   Settings,
@@ -1223,7 +1308,12 @@ interface ChzzkForm {
   detectionEnabled?: boolean;
 }
 
-type Feature = 'general' | 'notification' | 'crawler' | 'verification';
+type Feature =
+  | 'general'
+  | 'profile'
+  | 'notification'
+  | 'crawler'
+  | 'verification';
 type Platform = 'youtube' | 'twitch' | 'twitcasting' | 'chzzk';
 
 const apiURL = inject<string>('apiURL');
@@ -1269,6 +1359,24 @@ const commonForm = ref<CommonForm>({
   globalNoticeChannelId: '',
   verificationLogChannelId: ''
 });
+// undefined = 未變更、null = 恢復全域、字串 = 剛選好的圖片
+const pendingProfile = ref<{ avatar?: string | null; banner?: string | null }>(
+  {}
+);
+const profilePreview = computed(() => ({
+  avatar:
+    pendingProfile.value.avatar === undefined
+      ? settings.value?.common.botAvatarUrl || ''
+      : pendingProfile.value.avatar || '',
+  banner:
+    pendingProfile.value.banner === undefined
+      ? settings.value?.common.botBannerUrl || ''
+      : pendingProfile.value.banner || ''
+}));
+const hasPendingProfile = computed(
+  () =>
+    'avatar' in pendingProfile.value || 'banner' in pendingProfile.value
+);
 const youtubeForms = ref<YouTubeForm[]>([]);
 const twitchForms = ref<TwitchForm[]>([]);
 const twitcastingForms = ref<TwitCastingForm[]>([]);
@@ -1357,12 +1465,18 @@ const platformLabels: Record<Platform, string> = {
   twitcasting: 'TwitCasting',
   chzzk: 'CHZZK'
 };
-const platformsByFeature: Record<Exclude<Feature, 'general'>, Platform[]> = {
+const platformsByFeature: Record<
+  Exclude<Feature, 'general' | 'profile'>,
+  Platform[]
+> = {
   notification: ['youtube', 'twitch', 'twitcasting', 'chzzk'],
   crawler: ['youtube', 'twitch', 'twitcasting', 'chzzk'],
   verification: ['youtube', 'twitch']
 };
-const featureLabels: Record<Exclude<Feature, 'general'>, string> = {
+const featureLabels: Record<
+  Exclude<Feature, 'general' | 'profile'>,
+  string
+> = {
   notification: '直播通知',
   crawler: '爬蟲',
   verification: '會員驗證'
@@ -1389,6 +1503,7 @@ const contentTitle = computed(() => {
   if (!selectedGuild.value.botInstalled) return '請先邀請機器人';
   if (!settings.value) return selectedGuild.value.name;
   if (activeFeature.value === 'general') return '一般設定';
+  if (activeFeature.value === 'profile') return '機器人外觀';
   if (activeFeature.value === 'verification')
     return `${activePlatformLabel.value} ${verificationName.value}`;
   return `${activePlatformLabel.value} ${featureLabels[activeFeature.value]}`;
@@ -1570,6 +1685,10 @@ const replyText = computed(() => {
     'settings.source-not-found':
       '找不到這個平台頻道，請確認網址或 ID 是否正確。',
     'settings.invalid-source': '來源格式不正確，請輸入頻道 ID 或頻道網址。',
+    'settings.invalid-image':
+      'Discord 不接受這張圖片：格式不正確，或短時間內換太多次。請換一張圖或過幾分鐘再試。',
+    'settings.rate-limited':
+      'Discord 暫時限制更換頭像或橫幅，請過幾分鐘再試。',
     'crawler.source-not-found':
       '找不到這個平台頻道，請確認網址或 ID 是否正確。',
     'crawler.already-exists': '這個爬蟲已經在此伺服器中。',
@@ -1673,6 +1792,8 @@ const normalizeSnapshot = (
 
 const useSnapshot = (snapshot: GuildSettingsSnapshot) => {
   settings.value = normalizeSnapshot(snapshot);
+  // 換伺服器時丟掉還沒送出的圖片，避免把 A 伺服器選的圖存到 B
+  pendingProfile.value = {};
   commonForm.value = {
     locale: settings.value.common.locale || 'zh-TW',
     globalNoticeChannelId: settings.value.common.globalNoticeChannelId || '',
@@ -2123,6 +2244,119 @@ const saveGeneral = async () => {
       settings.value.common[field] = submitted[field];
   }
   mutationReply.value = { state: pending ? 'pending' : 'applied' };
+};
+
+const profileImageSize = {
+  avatar: { width: 512, height: 512 },
+  banner: { width: 1020, height: 360 }
+} as const;
+
+const blobToDataURL = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+
+// 依目標比例置中裁切後轉 JPEG：Discord.Net 送圖時把 MIME 固定寫成 image/jpeg。
+const toProfileImage = async (
+  file: File,
+  width: number,
+  height: number
+): Promise<string> => {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('canvas_unavailable');
+
+    const scale = Math.max(width / bitmap.width, height / bitmap.height);
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
+    context.drawImage(
+      bitmap,
+      (width - bitmap.width * scale) / 2,
+      (height - bitmap.height * scale) / 2,
+      bitmap.width * scale,
+      bitmap.height * scale
+    );
+
+    for (const quality of [0.85, 0.7]) {
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', quality)
+      );
+      if (blob && blob.size <= 256 * 1024) return blobToDataURL(blob);
+    }
+    throw new Error('image_too_large');
+  } finally {
+    bitmap.close();
+  }
+};
+
+const pickProfileImage = async (
+  field: 'avatar' | 'banner',
+  event: Event
+) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  // 清掉選擇，同一張圖才能再選一次
+  input.value = '';
+  if (!file) return;
+
+  const selectionVersion = guildSelectionVersion;
+  try {
+    const size = profileImageSize[field];
+    const image = await toProfileImage(file, size.width, size.height);
+    // 處理期間換了伺服器就丟掉，避免把 A 伺服器選的圖存到 B
+    if (selectionVersion !== guildSelectionVersion) return;
+    pendingProfile.value[field] = image;
+    mutationReply.value = null;
+  } catch {
+    mutationReply.value = {
+      state: 'rejected',
+      message: '無法處理這張圖片，請換一張 JPG 或 PNG。'
+    };
+  }
+};
+
+const clearProfileImage = (field: 'avatar' | 'banner') => {
+  const current =
+    field === 'avatar'
+      ? settings.value?.common.botAvatarUrl
+      : settings.value?.common.botBannerUrl;
+  // 伺服器本來就沒有圖、只是選了還沒送出：取消選擇就好，不要送出「清除」
+  if (!current && typeof pendingProfile.value[field] === 'string')
+    delete pendingProfile.value[field];
+  else pendingProfile.value[field] = null;
+  mutationReply.value = null;
+};
+
+const saveProfile = async () => {
+  if (!settings.value || !hasPendingProfile.value) {
+    mutationReply.value = { state: 'applied', message: '設定未變更。' };
+    return;
+  }
+
+  const submitted = { ...pendingProfile.value };
+  const payload: Record<string, unknown> = {};
+  for (const field of ['avatar', 'banner'] as const) {
+    if (!(field in submitted)) continue;
+    const value = submitted[field];
+    if (value === null) payload[field] = null;
+    else if (value) payload[field] = value.split(',')[1];
+  }
+
+  const reply = await runMutation('profile', 'guild.set-bot-profile', payload);
+  if (!reply || (reply.state !== 'applied' && reply.state !== 'pending')) return;
+
+  // Discord 的 member 事件還沒到，重新抓快照會拿到舊圖，所以先用剛裁好的本地預覽。
+  const common = settings.value.common;
+  if ('avatar' in submitted) common.botAvatarUrl = submitted.avatar || '';
+  if ('banner' in submitted) common.botBannerUrl = submitted.banner || '';
+  pendingProfile.value = {};
 };
 
 const reloadAfterMutation = async (reply: AdminMutationReply | null) => {
@@ -2986,6 +3220,26 @@ select.field {
 
 .field[readonly] {
   @apply cursor-default bg-neutral-900 text-white;
+}
+
+.profile-field {
+  @apply grid content-start gap-2 text-sm font-medium text-zinc-200;
+}
+
+.profile-avatar {
+  @apply flex min-h-16 items-center gap-3 text-xs font-normal text-zinc-400;
+}
+
+.profile-avatar img {
+  @apply h-16 w-16 shrink-0 rounded-full object-cover;
+}
+
+.profile-banner {
+  @apply flex min-h-16 w-full max-w-sm items-center overflow-hidden rounded bg-neutral-900 text-xs font-normal text-zinc-400;
+}
+
+.profile-banner img {
+  @apply aspect-[17/6] w-full object-cover;
 }
 
 .checkbox-label {
