@@ -1727,7 +1727,7 @@ const setFormLoading = (
 };
 // 側欄的「+」讓使用者自己選伺服器；「請先邀請機器人」才鎖定目前選的伺服器
 const generalInviteUrl =
-  'https://discordapp.com/api/oauth2/authorize?client_id=758222559392432160&permissions=2416143425&scope=bot%20applications.commands';
+  'https://discordapp.com/api/oauth2/authorize?client_id=758222559392432160&permissions=11073473633&scope=bot%20applications.commands';
 const inviteUrl = computed(() => {
   const guildId = selectedGuild.value?.id || '';
   return `${generalInviteUrl}&guild_id=${encodeURIComponent(guildId)}&disable_guild_select=true`;

@@ -22,7 +22,7 @@
         伺服器設定
       </a>
       <a
-        href="https://discordapp.com/api/oauth2/authorize?client_id=758222559392432160&permissions=2416143425&scope=bot%20applications.commands"
+        href="https://discordapp.com/api/oauth2/authorize?client_id=758222559392432160&permissions=11073473633&scope=bot%20applications.commands"
         class="btn cursor-pointer bg-indigo-600 active:bg-indigo-500"
       >
         邀請機器人
