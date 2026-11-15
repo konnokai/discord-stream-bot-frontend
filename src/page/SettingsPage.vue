@@ -231,6 +231,7 @@
         </div>
 
         <footer class="sidebar-footer">
+          <a href="https://discord.gg/2JWDXfPBQ4" target="_blank">支援伺服器</a>
           <a href="/privacy" data-spa-link>隱私權政策</a>
           <a href="/terms" data-spa-link>使用條款</a>
         </footer>

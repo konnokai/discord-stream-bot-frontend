@@ -8,13 +8,20 @@
       </div>
     </div>
     <div class="h-7"></div>
-    <div class="w-full flex justify-center">
+    <div class="w-full flex flex-wrap justify-center gap-4">
       <a
         href="https://konnokai.notion.site/a4fff40bd95c4bec9edca5b78cdd5d37"
         class="text-sm text-indigo-300 underline"
         target="_blank"
       >
         設定與使用教學
+      </a>
+      <a
+        href="https://discord.gg/2JWDXfPBQ4"
+        class="text-sm text-indigo-300 underline"
+        target="_blank"
+      >
+        支援伺服器
       </a>
     </div>
     <div class="h-7"></div>
