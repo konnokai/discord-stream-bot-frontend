@@ -11,7 +11,7 @@ Issues and specs for this repo live as GitHub issues in `konnokai/discord-stream
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
-This clone has two remotes: `origin` (`konnokai/discord-stream-bot-frontend`, this project) and `upstream` (`DDhackers/auto-discord-ytmember-checker`, the original project this was forked from). Always file and read issues on `origin`. Never create issues, comments, or labels on `upstream`. If `gh repo set-default --view` does not print `konnokai/discord-stream-bot-frontend`, pass `-R konnokai/discord-stream-bot-frontend` on every `gh issue` / `gh pr` command.
+This clone has one remote: `origin` (`konnokai/discord-stream-bot-frontend`). The upstream fork it came from is no longer maintained and is not tracked here. If `gh repo set-default --view` does not print `konnokai/discord-stream-bot-frontend`, pass `-R konnokai/discord-stream-bot-frontend` on every `gh issue` / `gh pr` command.
 
 ## Pull requests as a triage surface
 

@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issue 記在 GitHub Issues（`konnokai/discord-stream-bot-frontend`，不是 upstream），用 `gh` CLI 操作。See `docs/agents/issue-tracker.md`.
+Issue 記在 GitHub Issues（`konnokai/discord-stream-bot-frontend`），用 `gh` CLI 操作。See `docs/agents/issue-tracker.md`.
 
 ### Domain docs
 
